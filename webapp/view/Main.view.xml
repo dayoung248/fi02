@@ -1,0 +1,133 @@
+<mvc:View controllerName="code.t4.ui5.fi02.controller.Main"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m">
+    <Page id="page" title="[FI] 수익성분석">
+
+        <IconTabBar
+            id="idIconTabBar"
+            select=".onTabSelect"
+            class="sapUiResponsiveContentPadding">
+
+            <items>
+                <IconTabFilter
+                    text="전체"
+                    key="A"
+                    icon="sap-icon://vertical-waterfall-chart" />
+
+                <IconTabFilter
+                    text="일반판매"
+                    key="G"
+                    icon="sap-icon://sales-order" />
+
+                <IconTabFilter
+                    text="렌탈판매"
+                    key="R"
+                    icon="sap-icon://line-chart-time-axis" />
+            </items>
+
+            <content>
+                <HBox
+                    id="kpiBox"
+                    width="100%"
+                    wrap="NoWrap"
+                    justifyContent="Center"
+                    class="sapUiSmallMargin">
+                    <VBox class="sapUiTinyMarginEnd">
+                        <GenericTile
+                            id="idSalesTile"
+                            header="당기매출"
+                            subheader="비교기간 대비"
+                            width="18rem"
+                            frameType="TwoByOne">
+                            <TileContent unit="{Waers}" footer="당기 기준">
+                                <NumericContent
+                                    value="{ parts: [ 'Salesamt',
+                                                      'Waers' ],
+                                                      type: 'sap.ui.model.type.Currency',
+                                                      formatOptions: { showMeasure: false } }"
+                                scale="{Waers}"
+                                valueColor="Good"
+                                indicator="Up"
+                                truncateValueTo="12"
+                                withMargin="false" /> 
+                                <!-- value="{ parts: [ 'Salesamt',
+                                    'Waers' ],
+                                    type: 'sap.ui.model.type.Currency',
+                                    formatOptions: { showMeasure: false } }"
+                                    scale="{Waers}"
+                                    valueColor="Good"
+                                    indicator="Up"
+                                    truncateValueTo="12"
+                                    withMargin="false" 
+                                    width="100%"/> -->
+                            </TileContent>
+                        </GenericTile>
+                    </VBox>
+
+                    <VBox class="sapUiTinyMarginEnd">
+                        <GenericTile
+                            header="당기원가"
+                            subheader="비교기간 대비"
+                            width="18rem"
+                            frameType="TwoByOne">
+                            <TileContent footer="당기 기준">
+                                <NumericContent
+                                    value="{ parts: [ 'Costamt',
+                                                      'Waers' ],
+                                                      type: 'sap.ui.model.type.Currency',
+                                                      formatOptions: { showMeasure: false } }"
+                                    scale="{Waers}"
+                                    valueColor="Critical"
+                                    indicator="Up"
+                                    truncateValueTo="12"
+                                    withMargin="false" 
+                                    width="100%"/>
+                            </TileContent>
+                        </GenericTile>
+                    </VBox>
+
+                    <VBox class="sapUiTinyMarginEnd">
+                        <GenericTile
+                            header="당기이익"
+                            subheader="비교기간 대비"
+                            width="18rem"
+                            frameType="TwoByOne">
+                            <TileContent unit="{Waers}" footer="당기 기준">
+                                <NumericContent
+                                    value="{ parts: [ 'Profitamt',
+                                                      'Waers' ],
+                                                      type: 'sap.ui.model.type.Currency',
+                                                      formatOptions: { showMeasure: false } }"
+                                    scale="{Waers}"
+                                    valueColor="Good"
+                                    indicator="Up"
+                                    truncateValueTo="12"
+                                    withMargin="false" 
+                                    width="100%"/>
+                            </TileContent>
+                        </GenericTile>
+                    </VBox>
+
+                    <VBox class="sapUiTinyMarginEnd">
+                        <GenericTile
+                            header="이익률"
+                            subheader="비교기간 대비"
+                            width="18rem"
+                            frameType="TwoByOne">
+                            <TileContent unit="%" footer="당기 기준">
+                                <NumericContent
+                                    value="{Profitrate}"
+                                    scale="%"
+                                    valueColor="Good"
+                                    indicator="None"
+                                    truncateValueTo="8"
+                                    withMargin="false" 
+                                    width="100%"/>
+                            </TileContent>
+                        </GenericTile>
+                    </VBox>
+                </HBox>
+            </content>
+        </IconTabBar>
+    </Page>
+</mvc:View>
