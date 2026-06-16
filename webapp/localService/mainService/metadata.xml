@@ -36,8 +36,36 @@
                 <Property Name="Avgsalesprice" Type="Edm.Decimal" Nullable="false" Precision="24" Scale="3" sap:unicode="false" sap:label="평균판매단가" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
                 <Property Name="Waers" Type="Edm.String" Nullable="false" MaxLength="5" sap:unicode="false" sap:label="통화" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false" sap:semantics="currency-code"/>
             </EntityType>
+            <EntityType Name="ProfitCompare" sap:content-version="1">
+                <Key>
+                    <PropertyRef Name="Gjahr"/>
+                    <PropertyRef Name="Monat"/>
+                    <PropertyRef Name="Weeks"/>
+                    <PropertyRef Name="Compgjahr"/>
+                    <PropertyRef Name="Compmonat"/>
+                    <PropertyRef Name="Compweeks"/>
+                    <PropertyRef Name="Periodtype"/>
+                    <PropertyRef Name="Salestype"/>
+                </Key>
+                <Property Name="Gjahr" Type="Edm.String" Nullable="false" MaxLength="4" sap:unicode="false" sap:label="회계연도" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="Monat" Type="Edm.String" Nullable="false" MaxLength="2" sap:unicode="false" sap:label="회계월" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="Weeks" Type="Edm.String" Nullable="false" MaxLength="2" sap:unicode="false" sap:label="주차" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="Compgjahr" Type="Edm.String" Nullable="false" MaxLength="4" sap:unicode="false" sap:label="비교회계연도" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="Compmonat" Type="Edm.String" Nullable="false" MaxLength="2" sap:unicode="false" sap:label="비교회계월" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="Compweeks" Type="Edm.String" Nullable="false" MaxLength="2" sap:unicode="false" sap:label="비교주차" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="Periodtype" Type="Edm.String" Nullable="false" MaxLength="1" sap:unicode="false" sap:label="기간유형" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="Salestype" Type="Edm.String" Nullable="false" MaxLength="1" sap:unicode="false" sap:label="판매유형" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="Currsalesamt" Type="Edm.Decimal" Nullable="false" Precision="24" Scale="3" sap:unicode="false" sap:unit="Waers" sap:label="당기매출" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="Compsalesamt" Type="Edm.Decimal" Nullable="false" Precision="24" Scale="3" sap:unicode="false" sap:unit="Waers" sap:label="비교기간매출" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="Currcostamt" Type="Edm.Decimal" Nullable="false" Precision="24" Scale="3" sap:unicode="false" sap:unit="Waers" sap:label="당기원가" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="Compcostamt" Type="Edm.Decimal" Nullable="false" Precision="24" Scale="3" sap:unicode="false" sap:unit="Waers" sap:label="비교기간원가" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="Currprofitamt" Type="Edm.Decimal" Nullable="false" Precision="24" Scale="3" sap:unicode="false" sap:unit="Waers" sap:label="당기이익" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="Compprofitamt" Type="Edm.Decimal" Nullable="false" Precision="24" Scale="3" sap:unicode="false" sap:unit="Waers" sap:label="비교기간이익" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="Waers" Type="Edm.String" Nullable="false" MaxLength="5" sap:unicode="false" sap:label="통화" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false" sap:semantics="currency-code"/>
+            </EntityType>
             <EntityContainer Name="ZGWD4FI0002_SRV_Entities" m:IsDefaultEntityContainer="true" sap:supported-formats="atom json xlsx">
                 <EntitySet Name="ProfitKpiSet" EntityType="ZGWD4FI0002_SRV.ProfitKpi" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:pageable="false" sap:content-version="1"/>
+                <EntitySet Name="ProfitCompareSet" EntityType="ZGWD4FI0002_SRV.ProfitCompare" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:pageable="false" sap:content-version="1"/>
             </EntityContainer>
             <Annotation Term="Core.SchemaVersion" String="1.0.0" xmlns="http://docs.oasis-open.org/odata/ns/edm"/>
             <atom:link rel="self" href="http://bgissap3.bgissap.co.kr:8000/sap/opu/odata/sap/ZGWD4FI0002_SRV/$metadata" xmlns:atom="http://www.w3.org/2005/Atom"/>

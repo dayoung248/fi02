@@ -1,6 +1,10 @@
-<mvc:View controllerName="code.t4.ui5.fi02.controller.Main"
+<mvc:View xmlns:core="sap.ui.core" controllerName="code.t4.ui5.fi02.controller.Main"
     xmlns:mvc="sap.ui.core.mvc"
-    xmlns="sap.m">
+    xmlns="sap.m"
+    xmlns:viz="sap.viz.ui5.controls"
+    xmlns:viz.data="sap.viz.ui5.data"
+    xmlns:viz.feeds="sap.viz.ui5.controls.common.feeds">
+
     <Page id="page" title="[FI] 수익성분석">
 
         <IconTabBar
@@ -26,6 +30,33 @@
             </items>
 
             <content>
+                <HBox >
+                    <Label text="비교 기준" class="sapUiSmallMarginEnd"/>
+                    <Select
+                        id="idPeriodType"
+                        selectedKey="M"
+                        change=".onPeriodTypeChange" >
+                        <items>
+                            <core:Item key="M" text="월 기준"/>
+                            <core:Item key="W" text="주 기준"/>
+                        </items>
+                    </Select>
+                    <Select
+                        id="idMonat"
+                        selectedKey="05"
+                        change=".onMonatChange" >
+                    </Select>
+                    <Select
+                        id="idWeeks"
+                        selectedKey="00"
+                        change=".onPeriodChange" >
+                    </Select>
+                    <Input
+                        id="idCompPeriodText"
+                        editable="false"
+                        width="16rem"
+                        class="sapUiTinyMarginBegin"/>
+                </HBox>
                 <HBox
                     id="kpiBox"
                     width="100%"
@@ -39,17 +70,23 @@
                             subheader="비교기간 대비"
                             width="18rem"
                             frameType="TwoByOne">
-                            <TileContent unit="{Waers}" footer="당기 기준">
+                            <TileContent unit="" footer="">
+                            <VBox>
                                 <NumericContent
                                     value="{ parts: [ 'Salesamt',
                                                       'Waers' ],
                                                       type: 'sap.ui.model.type.Currency',
                                                       formatOptions: { showMeasure: false } }"
-                                scale="{Waers}"
-                                valueColor="Good"
-                                indicator="Up"
-                                truncateValueTo="12"
-                                withMargin="false" /> 
+                                    scale="{Waers}"
+                                    valueColor="{= ${Prevsalesrate} >= 0 ? 'Good' : 'Error' }"
+                                    indicator="{= ${Prevsalesrate} > 0 ? 'Up' : ${Prevsalesrate} &lt; 0 ? 'Down' : 'None' }"
+                                    truncateValueTo="12"
+                                    withMargin="false" /> 
+
+                                <ObjectStatus
+                                    text="{= ${Compsalesamt} === '0.000' ? '비교기간 매출 없음' : '비교기간 대비 ' + ${Prevsalesrate} + '%' }"
+                                    state="{= ${Compsalesamt} === '0.000' ? 'None' : ${Prevsalesrate} >= 0 ? 'Success' : 'Error' }"/>
+                            </VBox>
                                 <!-- value="{ parts: [ 'Salesamt',
                                     'Waers' ],
                                     type: 'sap.ui.model.type.Currency',
@@ -70,18 +107,23 @@
                             subheader="비교기간 대비"
                             width="18rem"
                             frameType="TwoByOne">
-                            <TileContent footer="당기 기준">
+                            <TileContent footer="">
+                            <VBox>
                                 <NumericContent
                                     value="{ parts: [ 'Costamt',
                                                       'Waers' ],
                                                       type: 'sap.ui.model.type.Currency',
                                                       formatOptions: { showMeasure: false } }"
                                     scale="{Waers}"
-                                    valueColor="Critical"
-                                    indicator="Up"
+                                    valueColor="{= ${Prevcostrate} >= 0 ? 'Error' : 'Good' }"
+                                    indicator="{= ${Prevcostrate} > 0 ? 'Up' : ${Prevcostrate} &lt; 0 ? 'Down' : 'None' }"
                                     truncateValueTo="12"
                                     withMargin="false" 
                                     width="100%"/>
+                                <ObjectStatus
+                                    text="{= ${Compcostamt} === '0.000' ? '비교기간 원가 없음' : '비교기간 대비 ' + ${Prevcostrate} + '%' }"
+                                    state="{= ${Compcostamt} === '0.000' ? 'None' : ${Prevcostrate} >= 0 ? 'Error' : 'Success' }"/>
+                            </VBox>
                             </TileContent>
                         </GenericTile>
                     </VBox>
@@ -92,18 +134,23 @@
                             subheader="비교기간 대비"
                             width="18rem"
                             frameType="TwoByOne">
-                            <TileContent unit="{Waers}" footer="당기 기준">
+                            <TileContent unit="" footer="">
+                                <VBox>
                                 <NumericContent
                                     value="{ parts: [ 'Profitamt',
                                                       'Waers' ],
                                                       type: 'sap.ui.model.type.Currency',
                                                       formatOptions: { showMeasure: false } }"
                                     scale="{Waers}"
-                                    valueColor="Good"
-                                    indicator="Up"
+                                    valueColor="{= ${Prevprofitrate} >= 0 ? 'Good' : 'Error' }"
+                                    indicator="{= ${Prevprofitrate} > 0 ? 'Up' : ${Prevprofitrate} &lt; 0 ? 'Down' : 'None' }"
                                     truncateValueTo="12"
                                     withMargin="false" 
                                     width="100%"/>
+                                <ObjectStatus
+                                    text="{= ${Compprofitamt} === '0.000' ? '비교기간 이익 없음' : '비교기간 대비 ' + ${Prevprofitrate} + '%' }"
+                                    state="{= ${Compprofitamt} === '0.000' ? 'None' : ${Prevprofitrate} >= 0 ? 'Success' : 'Error' }"/>
+                                </VBox>
                             </TileContent>
                         </GenericTile>
                     </VBox>
@@ -127,6 +174,66 @@
                         </GenericTile>
                     </VBox>
                 </HBox>
+                <SegmentedButton
+                    id="idAnalysisSegment"
+                    selectedKey="CUSTOMER"
+                    selectionChange=".onAnalysisSegmentChange"
+                    visible="true"
+                    class="sapUiSmallMarginBegin sapUiTinyMarginBottom">
+                    <items>
+                        <SegmentedButtonItem text="고객유형별" key="CUSTOMER"/>
+                        <SegmentedButtonItem text="제품별" key="MATERIAL"/>
+                    </items>
+                </SegmentedButton>
+                <viz:VizFrame
+                    id="idSalesCompareChart"
+                    width="100%"
+                    height="20rem"
+                    vizType="column"
+                    vizProperties="{
+                        'title': {
+                            'visible': true,
+                            'text': '일반판매 vs 렌탈판매 매출 비교'
+                        }
+                    }">
+
+                    <viz:dataset>
+                        <viz.data:FlattenedDataset data="{chart>/salesCompare}">
+                            <viz.data:dimensions>
+                                <viz.data:DimensionDefinition
+                                    name="기간"
+                                    value="{chart>Period}" />
+
+                                <viz.data:DimensionDefinition
+                                    name="판매유형"
+                                    value="{chart>SalesTypeText}" />
+                            </viz.data:dimensions>
+
+                            <viz.data:measures>
+                                <viz.data:MeasureDefinition
+                                    name="매출"
+                                    value="{chart>Sales}" />
+                            </viz.data:measures>
+                        </viz.data:FlattenedDataset>
+                    </viz:dataset>
+
+                    <viz:feeds>
+                        <viz.feeds:FeedItem
+                            uid="valueAxis"
+                            type="Measure"
+                            values="매출" />
+
+                        <viz.feeds:FeedItem
+                            uid="categoryAxis"
+                            type="Dimension"
+                            values="기간" />
+
+                        <viz.feeds:FeedItem
+                            uid="color"
+                            type="Dimension"
+                            values="판매유형" />
+                    </viz:feeds>
+                </viz:VizFrame>
             </content>
         </IconTabBar>
     </Page>
