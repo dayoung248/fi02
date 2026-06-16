@@ -64,6 +64,19 @@ sap.ui.define([
                 detailDonutData: []
             }), "detail");
 
+            this.getView().setModel(new JSONModel({
+                title: "선택 상세 분석",
+                Dimension: "",
+                Revenue: 0,
+                Cost: 0,
+                Profit: 0,
+                Profitrate: 0,
+                ContributionRate: 0,
+                Waers: "KRW",
+                chartTitle: "",
+                chartData: []
+            }), "selected");
+
             // 전체일 때만 보이는 차트
             this.byId("idSalesCompareChart").setVisible(this._sAnalysisType === "A");
 
@@ -79,7 +92,7 @@ sap.ui.define([
             //    this._bindDetailAnalysis();
             //}
 
-            this.byId("idDetailChartBox").setVisible(this._sAnalysisType !== "A");
+            //this.byId("idDetailChartBox").setVisible(this._sAnalysisType !== "A");
 
             // 6. 최초 KPI 바인딩
             this._bindKpiTile();
@@ -104,7 +117,26 @@ sap.ui.define([
 
             this.byId("idDetailBox").setVisible(this._sAnalysisType !== "A");
 
-            this.byId("idDetailChartBox").setVisible(this._sAnalysisType !== "A");
+            //this.byId("idDetailChartBox").setVisible(this._sAnalysisType !== "A");
+
+            this.byId("idFCL").setLayout("OneColumn");
+
+            var oFCL = this.byId("idFCL");
+
+            if (oFCL) {
+                oFCL.setLayout("OneColumn");
+            }
+
+            this._bindKpiTile();
+
+            if (this._sAnalysisType !== "A") {
+                this._bindDetailAnalysis();
+            }
+
+            var oDetailModel = this.getView().getModel("detail");
+            //oDetailModel.setProperty("/detailData", []); 일단 빼
+            //oDetailModel.setProperty("/detailDonutData", []); 일단 빼
+
             // 같은 비교기간 기준으로 KPI 다시 조회
             this._bindKpiTile();
 
@@ -422,6 +454,12 @@ sap.ui.define([
             });
         },
         onAnalysisSegmentChange() {
+            this.byId("idFCL").setLayout("OneColumn");
+
+            var oDetailModel = this.getView().getModel("detail");
+            oDetailModel.setProperty("/detailData", []);
+            oDetailModel.setProperty("/detailDonutData", []);
+
             this._bindDetailAnalysis();
         },
         _bindDetailAnalysis(){
@@ -450,13 +488,14 @@ sap.ui.define([
                 new sap.ui.model.Filter("Detailtype", sap.ui.model.FilterOperator.EQ, sDetailType)
             ];
 
-            var oContext = this.byId("kpiBox").getBindingContext();
+            // var oContext = this.byId("kpiBox").getBindingContext();
 
-            if (!oContext) {
-                return;
-            }
+            // if (!oContext) {
+            //     return;
+            // }
 
-            var oODataModel = oContext.getModel();
+            // var oODataModel = oContext.getModel();
+            var oODataModel = this.getView().getModel();
             var oDetailModel = this.getView().getModel("detail");
 
             //var oODataModel = this.byId("kpiBox").getBindingContext().getModel();
@@ -464,31 +503,54 @@ sap.ui.define([
 
             oODataModel.read("/ProfitDetailSet", {
                 filters: aFilters,
+                // success: function (oData) {
+                //     // console.log("DETAIL DATA", oData.results);
+
+                //     // oDetailModel.setProperty("/detailData", oData.results);
+
+                //     var aResult = oData.results || [];
+                //     var sDetailType = this.byId("idAnalysisSegment").getSelectedKey(); // C / M
+
+                //     var aChartData = aResult.map(function (oRow) {
+                //         if (sDetailType === "C") {
+                //             // 고객유형별: 매출 + 이익
+                //             return {
+                //                 Dimension: oRow.Dimension,
+                //                 Revenue: Number(oRow.Revenue || 0),
+                //                 Profit: Number(oRow.Profit || 0)
+                //             };
+                //         } else {
+                //             // 제품별: 매출 + 원가
+                //             return {
+                //                 Dimension: oRow.Dimension,
+                //                 Revenue: Number(oRow.Revenue || 0),
+                //                 Cost: Number(oRow.Cost || 0)
+                //             };
+                //         }
+                //     });
+
+                //     var aDonutData = aResult
+                //         .filter(function (oRow) {
+                //             return Number(oRow.Revenue || 0) > 0;
+                //         })
+                //         .map(function (oRow) {
+                //             return {
+                //                 Dimension: oRow.Dimension,
+                //                 Revenue: Number(oRow.Revenue || 0)
+                //             };
+                //         });
+
+                //     oDetailModel.setProperty("/detailData", aResult);
+                //     //oDetailModel.setProperty("/detailChartData", aChartData);
+                //     oDetailModel.setProperty("/detailDonutData", aDonutData);
+
+                //     //this._setDetailChartTitle();
+                //     //this._setDetailBarChartMeasure();
+
+                // }.bind(this)
+
                 success: function (oData) {
-                    // console.log("DETAIL DATA", oData.results);
-
-                    // oDetailModel.setProperty("/detailData", oData.results);
-
                     var aResult = oData.results || [];
-                    var sDetailType = this.byId("idAnalysisSegment").getSelectedKey(); // C / M
-
-                    var aChartData = aResult.map(function (oRow) {
-                        if (sDetailType === "C") {
-                            // 고객유형별: 매출 + 이익
-                            return {
-                                Dimension: oRow.Dimension,
-                                Revenue: Number(oRow.Revenue || 0),
-                                Profit: Number(oRow.Profit || 0)
-                            };
-                        } else {
-                            // 제품별: 매출 + 원가
-                            return {
-                                Dimension: oRow.Dimension,
-                                Revenue: Number(oRow.Revenue || 0),
-                                Cost: Number(oRow.Cost || 0)
-                            };
-                        }
-                    });
 
                     var aDonutData = aResult
                         .filter(function (oRow) {
@@ -501,13 +563,19 @@ sap.ui.define([
                             };
                         });
 
+                    oDetailModel.setProperty("/detailData", []);
+                    oDetailModel.setProperty("/detailDonutData", []);
+
                     oDetailModel.setProperty("/detailData", aResult);
-                    oDetailModel.setProperty("/detailChartData", aChartData);
                     oDetailModel.setProperty("/detailDonutData", aDonutData);
 
                     this._setDetailChartTitle();
-                    this._setDetailBarChartMeasure();
 
+                    var oDonut = this.byId("idDetailDonutChart");
+                    if (oDonut) {
+                        oDonut.invalidate();
+                        oDonut.rerender();
+                    }
                 }.bind(this)
             });
         },
@@ -525,22 +593,22 @@ sap.ui.define([
             var sDetailType = this.byId("idAnalysisSegment").getSelectedKey();
             var sDetailText = sDetailType === "C" ? "고객유형별" : "제품별";
 
-            this.byId("idDetailBarChart").setVizProperties({
-                title: {
-                    visible: true,
-                    text: sSalesText + " " + sDetailText + " 수익성 비교"
-                },
-                valueAxis: {
-                    title: {
-                        visible: false
-                    }
-                },
-                plotArea: {
-                    dataLabel: {
-                        visible: true
-                    }
-                }
-            });
+            //this.byId("idDetailBarChart").setVizProperties({
+            //    title: {
+            //        visible: true,
+            //        text: sSalesText + " " + sDetailText + " 수익성 비교"
+           //     },
+            //    valueAxis: {
+            //        title: {
+            //            visible: false
+            //        }
+            //    },
+            //    plotArea: {
+            //        dataLabel: {
+            //            visible: true
+            //        }
+            //    }
+            //});
 
             this.byId("idDetailDonutChart").setVizProperties({
                 title: {
@@ -594,7 +662,66 @@ sap.ui.define([
         },
         onPeriodChange() {
             this._setCompPeriodText();
+            this.byId("idFCL").setLayout("OneColumn");
             this._bindKpiTile();
+        },
+        onDetailRowSelect(oEvent) {
+            var oItem = oEvent.getParameter("listItem");
+            if (!oItem) {
+                return;
+            }
+
+            var oRow = oItem.getBindingContext("detail").getObject();
+            var sDetailType = this.byId("idAnalysisSegment").getSelectedKey();
+
+            var aDetailData = this.getView().getModel("detail").getProperty("/detailData") || [];
+            var nTotalRevenue = aDetailData.reduce(function (nSum, oData) {
+                return nSum + Number(oData.Revenue || 0);
+            }, 0);
+
+            var nRevenue = Number(oRow.Revenue || 0);
+            var nCost = Number(oRow.Cost || 0);
+            var nProfit = Number(oRow.Profit || 0);
+
+            var nContributionRate = 0;
+            if (nTotalRevenue !== 0) {
+                nContributionRate = nRevenue / nTotalRevenue * 100;
+            }
+
+            var aChartData;
+            var sChartTitle;
+
+            if (sDetailType === "C") {
+                aChartData = [
+                    { Metric: "매출", Amount: nRevenue },
+                    { Metric: "이익", Amount: nProfit }
+                ];
+                sChartTitle = oRow.Dimension + " 매출/이익 비교";
+            } else {
+                aChartData = [
+                    { Metric: "매출", Amount: nRevenue },
+                    { Metric: "원가", Amount: nCost }
+                ];
+                sChartTitle = oRow.Dimension + " 매출/원가 비교";
+            }
+
+            this.getView().getModel("selected").setData({
+                title: oRow.Dimension + " 상세 분석",
+                Dimension: oRow.Dimension,
+                Revenue: nRevenue,
+                Cost: nCost,
+                Profit: nProfit,
+                Profitrate: Number(oRow.Profitrate || 0),
+                ContributionRate: nContributionRate.toFixed(2),
+                Waers: oRow.Waers || "KRW",
+                chartTitle: sChartTitle,
+                chartData: aChartData
+            });
+
+            this.byId("idFCL").setLayout("TwoColumnsMidExpanded");
+        },
+                onCloseFlexibleDetail() {
+            this.byId("idFCL").setLayout("OneColumn");
         }
     });
 });
