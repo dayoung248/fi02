@@ -16,9 +16,15 @@ sap.ui.define([
 
             // 현재기간은 화면에서 조회할 당기 기준
             // 나중에 오늘 날짜 기준으로 바꿔도 됨
-            this._sCurrGjahr = "2026";
-            this._sCurrMonat = "06";
-            this._sCurrWeeks = "23";
+
+            var oToday = new Date();
+
+            this._sCurrGjahr = String(oToday.getFullYear());
+            this._sCurrMonat = String(oToday.getMonth() + 1).padStart(2, "0");
+            this._sCurrWeeks = this._getWeekNo(oToday);
+            //this._sCurrGjahr = "2026";
+            //this._sCurrMonat = "06";
+            //this._sCurrWeeks = "23";
 
             var oMonat = this.byId("idMonat");
 
@@ -48,9 +54,6 @@ sap.ui.define([
             // 5. 비교기간 텍스트 세팅
             this._setCompPeriodText();
 
-            // 6. 최초 KPI 바인딩
-            this._bindKpiTile();
-
             this.getView().setModel(new JSONModel({
                 salesCompare: []
             }), "chart");
@@ -77,6 +80,9 @@ sap.ui.define([
             //}
 
             this.byId("idDetailChartBox").setVisible(this._sAnalysisType !== "A");
+
+            // 6. 최초 KPI 바인딩
+            this._bindKpiTile();
             // this._bindDetailAnalysis();
 
             // this._bindCompareChart();
@@ -102,15 +108,15 @@ sap.ui.define([
             // 같은 비교기간 기준으로 KPI 다시 조회
             this._bindKpiTile();
 
-            if (this._sAnalysisType === "A") {
-                this.getView().getModel("detail").setProperty("/detailData", []);
-                this.getView().getModel("detail").setProperty("/detailChartData", []);
-                this.getView().getModel("detail").setProperty("/detailDonutData", []);
+            //if (this._sAnalysisType === "A") {
+            //    this.getView().getModel("detail").setProperty("/detailData", []);
+            //    this.getView().getModel("detail").setProperty("/detailChartData", []);
+            //    this.getView().getModel("detail").setProperty("/detailDonutData", []);
 
-                this._bindCompareChart();
-            } else {
-                this._bindDetailAnalysis();
-            }
+            //    this._bindCompareChart();
+            //} else {
+            //    this._bindDetailAnalysis();
+            //}
             // this._bindDetailAnalysis();
 
         },
@@ -137,10 +143,10 @@ sap.ui.define([
             } else {
                 // 주 기준 비교
                 sCurrMonat = "00";
-                sCurrWeeks = this._sCurrWeeks;
+                sCurrWeeks = this._sCurrWeeks;   // 당기 고정
 
                 sCompMonatForKey = "00";
-                sCompWeeksForKey = sCompWeeks;
+                sCompWeeksForKey = sCompWeeks;   // 비교기간만 Select
             }
 
             var sPath = "/ProfitKpiSet(" +
@@ -161,6 +167,12 @@ sap.ui.define([
 
                         if (!oContext) {
                             return;
+                        }
+
+                        if (this._sAnalysisType === "A") {
+                            this._bindCompareChart();
+                        } else {
+                            this._bindDetailAnalysis();
                         }
 
                         var oData = oContext.getObject();
@@ -238,11 +250,15 @@ sap.ui.define([
             //    this.byId("idWeeks").setVisible(true);
             //}
 
-             this.byId("idWeeks").setVisible(sKey === "W");
+            this.byId("idWeeks").setVisible(sKey === "W");
 
-                this._setCompPeriodText();
-            },
-         _setCompPeriodText(){
+            this._setCompPeriodText();
+
+            if (this.getView().getModel("chart")) {
+                this._bindKpiTile();
+            }
+        },
+        _setCompPeriodText(){
                 var sPeriodType = this.byId("idPeriodType").getSelectedKey();
                 var sMonat = this.byId("idMonat").getSelectedKey();
                 var sWeeks = this.byId("idWeeks").getSelectedKey();
@@ -274,7 +290,8 @@ sap.ui.define([
 
             } else {
                 sCurrMonat = "00";
-                sCurrWeeks = this._sCurrWeeks;
+                sCurrWeeks = this._sCurrWeeks;   // 당기 고정
+
                 sCompMonatForKey = "00";
                 sCompWeeksForKey = sCompWeeks;
 
@@ -421,7 +438,7 @@ sap.ui.define([
                 sWeeks = "00";
             } else {
                 sMonat = "00";
-                sWeeks = this._sCurrWeeks;
+                sWeeks = this._sCurrWeeks;   // 당기 고정
             }
 
             var aFilters = [
@@ -574,6 +591,10 @@ sap.ui.define([
                     values: ["분석대상"]
                 }));
             }
+        },
+        onPeriodChange() {
+            this._setCompPeriodText();
+            this._bindKpiTile();
         }
     });
 });
