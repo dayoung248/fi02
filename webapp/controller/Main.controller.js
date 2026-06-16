@@ -55,6 +55,30 @@ sap.ui.define([
                 salesCompare: []
             }), "chart");
 
+            this.getView().setModel(new JSONModel({
+                detailData: [],
+                detailChartData: [],
+                detailDonutData: []
+            }), "detail");
+
+            // 전체일 때만 보이는 차트
+            this.byId("idSalesCompareChart").setVisible(this._sAnalysisType === "A");
+
+            // 일반/렌탈 탭일 때만 고객유형별/제품별 토글 표시
+            this.byId("idAnalysisSegment").setVisible(this._sAnalysisType !== "A");
+
+            this.byId("idDetailBox").setVisible(this._sAnalysisType !== "A");
+
+            // if (this._sAnalysisType === "A") {
+            //    this._bindCompareChart();
+            //    this.getView().getModel("detail").setProperty("/detailData", []);
+            //} else {
+            //    this._bindDetailAnalysis();
+            //}
+
+            this.byId("idDetailChartBox").setVisible(this._sAnalysisType !== "A");
+            // this._bindDetailAnalysis();
+
             // this._bindCompareChart();
 
         },
@@ -62,8 +86,33 @@ sap.ui.define([
             this._sAnalysisType = oEvent.getParameter("key"); // A / G / R
             // this._bindKpiTile(sAnalysisType);
             // 같은 비교기간 기준으로 KPI 다시 조회
+            // this._bindKpiTile();
+
+            // this._bindCompareChart();
+
+            // 전체일 때만 보이는 차트
+            this.byId("idSalesCompareChart").setVisible(this._sAnalysisType === "A");
+
+            // 일반/렌탈 탭일 때만 고객유형별/제품별 토글 표시
+            this.byId("idAnalysisSegment").setVisible(this._sAnalysisType !== "A");
+
+            this.byId("idDetailBox").setVisible(this._sAnalysisType !== "A");
+
+            this.byId("idDetailChartBox").setVisible(this._sAnalysisType !== "A");
+            // 같은 비교기간 기준으로 KPI 다시 조회
             this._bindKpiTile();
-            this._bindCompareChart();
+
+            if (this._sAnalysisType === "A") {
+                this.getView().getModel("detail").setProperty("/detailData", []);
+                this.getView().getModel("detail").setProperty("/detailChartData", []);
+                this.getView().getModel("detail").setProperty("/detailDonutData", []);
+
+                this._bindCompareChart();
+            } else {
+                this._bindDetailAnalysis();
+            }
+            // this._bindDetailAnalysis();
+
         },
         _bindKpiTile() {
 
@@ -119,7 +168,7 @@ sap.ui.define([
                         console.log(oData);
 
                         // KPI 모델이 정상적으로 붙은 뒤 차트 조회
-                        this._bindCompareChart();
+                        // this._bindCompareChart();
 
                     }.bind(this)
                 }
@@ -243,8 +292,16 @@ sap.ui.define([
                 new sap.ui.model.Filter("Periodtype", sap.ui.model.FilterOperator.EQ, sPeriodType)
             ];
 
-            var oODataModel = this.byId("kpiBox").getModel();
+            var oContext = this.byId("kpiBox").getBindingContext();
+
+            if (!oContext) {
+                return;
+            }
+
+            var oODataModel = oContext.getModel();
             var oChartModel = this.getView().getModel("chart");
+            //var oODataModel = this.byId("kpiBox").getModel();
+            //var oChartModel = this.getView().getModel("chart");
 
             oODataModel.read("/ProfitCompareSet", {
                 filters: aFilters,
@@ -346,6 +403,177 @@ sap.ui.define([
                     });
                 }.bind(this)
             });
+        },
+        onAnalysisSegmentChange() {
+            this._bindDetailAnalysis();
+        },
+        _bindDetailAnalysis(){
+            // 제목 및 칼럼명 변경
+            this._setDetailText();
+
+            var sPeriodType = this.byId("idPeriodType").getSelectedKey();
+            var sDetailType = this.byId("idAnalysisSegment").getSelectedKey(); // C / M
+
+            var sMonat, sWeeks;
+
+            if (sPeriodType === "M") {
+                sMonat = this._sCurrMonat;
+                sWeeks = "00";
+            } else {
+                sMonat = "00";
+                sWeeks = this._sCurrWeeks;
+            }
+
+            var aFilters = [
+                new sap.ui.model.Filter("Gjahr", sap.ui.model.FilterOperator.EQ, this._sCurrGjahr),
+                new sap.ui.model.Filter("Monat", sap.ui.model.FilterOperator.EQ, sMonat),
+                new sap.ui.model.Filter("Weeks", sap.ui.model.FilterOperator.EQ, sWeeks),
+                new sap.ui.model.Filter("Periodtype", sap.ui.model.FilterOperator.EQ, sPeriodType),
+                new sap.ui.model.Filter("Analysistype", sap.ui.model.FilterOperator.EQ, this._sAnalysisType),
+                new sap.ui.model.Filter("Detailtype", sap.ui.model.FilterOperator.EQ, sDetailType)
+            ];
+
+            var oContext = this.byId("kpiBox").getBindingContext();
+
+            if (!oContext) {
+                return;
+            }
+
+            var oODataModel = oContext.getModel();
+            var oDetailModel = this.getView().getModel("detail");
+
+            //var oODataModel = this.byId("kpiBox").getBindingContext().getModel();
+            //var oDetailModel = this.getView().getModel("detail");
+
+            oODataModel.read("/ProfitDetailSet", {
+                filters: aFilters,
+                success: function (oData) {
+                    // console.log("DETAIL DATA", oData.results);
+
+                    // oDetailModel.setProperty("/detailData", oData.results);
+
+                    var aResult = oData.results || [];
+                    var sDetailType = this.byId("idAnalysisSegment").getSelectedKey(); // C / M
+
+                    var aChartData = aResult.map(function (oRow) {
+                        if (sDetailType === "C") {
+                            // 고객유형별: 매출 + 이익
+                            return {
+                                Dimension: oRow.Dimension,
+                                Revenue: Number(oRow.Revenue || 0),
+                                Profit: Number(oRow.Profit || 0)
+                            };
+                        } else {
+                            // 제품별: 매출 + 원가
+                            return {
+                                Dimension: oRow.Dimension,
+                                Revenue: Number(oRow.Revenue || 0),
+                                Cost: Number(oRow.Cost || 0)
+                            };
+                        }
+                    });
+
+                    var aDonutData = aResult
+                        .filter(function (oRow) {
+                            return Number(oRow.Revenue || 0) > 0;
+                        })
+                        .map(function (oRow) {
+                            return {
+                                Dimension: oRow.Dimension,
+                                Revenue: Number(oRow.Revenue || 0)
+                            };
+                        });
+
+                    oDetailModel.setProperty("/detailData", aResult);
+                    oDetailModel.setProperty("/detailChartData", aChartData);
+                    oDetailModel.setProperty("/detailDonutData", aDonutData);
+
+                    this._setDetailChartTitle();
+                    this._setDetailBarChartMeasure();
+
+                }.bind(this)
+            });
+        },
+        _setDetailText() {
+            var sSalesText = this._sAnalysisType === "G" ? "일반판매" : "렌탈판매";
+            var sDetailType = this.byId("idAnalysisSegment").getSelectedKey();
+            var sDetailText = sDetailType === "C" ? "고객유형별" : "제품별";
+
+            this.byId("idDetailTitle").setText(sSalesText + " " + sDetailText + " 수익성 분석");
+            this.byId("idDimensionColumnText").setText(sDetailType === "C" ? "고객유형" : "제품코드");
+        },
+        _setDetailChartTitle() {
+            var sSalesText = this._sAnalysisType === "G" ? "일반판매" : "렌탈판매";
+
+            var sDetailType = this.byId("idAnalysisSegment").getSelectedKey();
+            var sDetailText = sDetailType === "C" ? "고객유형별" : "제품별";
+
+            this.byId("idDetailBarChart").setVizProperties({
+                title: {
+                    visible: true,
+                    text: sSalesText + " " + sDetailText + " 수익성 비교"
+                },
+                valueAxis: {
+                    title: {
+                        visible: false
+                    }
+                },
+                plotArea: {
+                    dataLabel: {
+                        visible: true
+                    }
+                }
+            });
+
+            this.byId("idDetailDonutChart").setVizProperties({
+                title: {
+                    visible: true,
+                    text: sSalesText + " " + sDetailText + " 매출 점유율"
+                },
+                plotArea: {
+                    dataLabel: {
+                        visible: true,
+                        type: "percentage"
+                    }
+                }
+            });
+        },
+        _setDetailBarChartMeasure(){
+            var sDetailType = this.byId("idAnalysisSegment").getSelectedKey();
+
+            var oChart = this.byId("idDetailBarChart");
+
+            if (sDetailType === "C") {
+                // 고객유형별: 매출 + 이익
+                oChart.removeAllFeeds();
+
+                oChart.addFeed(new sap.viz.ui5.controls.common.feeds.FeedItem({
+                    uid: "valueAxis",
+                    type: "Measure",
+                    values: ["매출", "이익"]
+                }));
+
+                oChart.addFeed(new sap.viz.ui5.controls.common.feeds.FeedItem({
+                    uid: "categoryAxis",
+                    type: "Dimension",
+                    values: ["분석대상"]
+                }));
+            } else {
+                // 제품별: 매출 + 원가
+                oChart.removeAllFeeds();
+
+                oChart.addFeed(new sap.viz.ui5.controls.common.feeds.FeedItem({
+                    uid: "valueAxis",
+                    type: "Measure",
+                    values: ["매출", "원가"]
+                }));
+
+                oChart.addFeed(new sap.viz.ui5.controls.common.feeds.FeedItem({
+                    uid: "categoryAxis",
+                    type: "Dimension",
+                    values: ["분석대상"]
+                }));
+            }
         }
     });
 });

@@ -62,8 +62,8 @@
                     width="100%"
                     wrap="NoWrap"
                     justifyContent="Center"
-                    class="sapUiSmallMargin">
-                    <VBox class="sapUiTinyMarginEnd">
+                    class="sapUiSmallMarginTopBottom">
+                    <VBox class="sapUiTinyMarginBegin sapUiSmallMarginEnd">
                         <GenericTile
                             id="idSalesTile"
                             header="당기매출"
@@ -101,7 +101,7 @@
                         </GenericTile>
                     </VBox>
 
-                    <VBox class="sapUiTinyMarginEnd">
+                    <VBox class="sapUiSmallMarginEnd">
                         <GenericTile
                             header="당기원가"
                             subheader="비교기간 대비"
@@ -128,7 +128,7 @@
                         </GenericTile>
                     </VBox>
 
-                    <VBox class="sapUiTinyMarginEnd">
+                    <VBox class="sapUiSmallMarginEnd">
                         <GenericTile
                             header="당기이익"
                             subheader="비교기간 대비"
@@ -155,36 +155,198 @@
                         </GenericTile>
                     </VBox>
 
-                    <VBox class="sapUiTinyMarginEnd">
+                    <VBox class="sapUiSmallMarginEnd">
                         <GenericTile
                             header="이익률"
                             subheader="비교기간 대비"
                             width="18rem"
                             frameType="TwoByOne">
-                            <TileContent unit="%" footer="당기 기준">
-                                <NumericContent
-                                    value="{Profitrate}"
-                                    scale="%"
-                                    valueColor="Good"
-                                    indicator="None"
-                                    truncateValueTo="8"
-                                    withMargin="false" 
-                                    width="100%"/>
+                            <!--valueColor="Good"
+                                    indicator="None"-->
+                            
+                            <TileContent > <!--unit="%" footer="당기 기준">-->
+                                <VBox>
+                                    <NumericContent
+                                        value="{Profitrate}"
+                                        scale="%"
+                                        valueColor="{= ${Compprofitrate} >= 0 ? 'Good' : 'Error' }"
+                                        indicator="{= ${Compprofitrate} > 0 ? 'Up' : ${Compprofitrate} &lt; 0 ? 'Down' : 'None' }"
+                                        truncateValueTo="8"
+                                        withMargin="false" 
+                                        width="100%"/>
+                                    <!--ObjectStatus
+                                        text="{= ${Compsalesamt} === '0.000' && ${Compcostamt} !== '0.000'
+                                                ? '비교기간 매출 미발생'
+                                                : ${Compsalesamt} === '0.000'
+                                                    ? '비교기준 없음'
+                                                    : '비교기간 대비 ' + ${Compprofitrate} + '%p' }"
+                                            state="{= ${Compsalesamt} === '0.000'
+                                                ? 'None'
+                                                : ${Compprofitrate} > 0
+                                                    ? 'Success'
+                                                    : ${Compprofitrate} &lt; 0
+                                                        ? 'Error'
+                                                        : 'None' }"/-->
+                                    <ObjectStatus
+                                        text="{= ${Compsalesamt} === '0.000' &amp;&amp; ${Compcostamt} !== '0.000' ? '비교기간 매출 미발생' : ${Compsalesamt} === '0.000' ? '비교기준 없음' : '비교기간 대비 ' + ${Compprofitrate} + '%p' }"
+                                        state="{= ${Compsalesamt} === '0.000' ? 'None' : ${Compprofitrate} > 0 ? 'Success' : ${Compprofitrate} &lt; 0 ? 'Error' : 'None' }"/>
+                                </VBox>
                             </TileContent>
+                            
                         </GenericTile>
                     </VBox>
                 </HBox>
-                <SegmentedButton
-                    id="idAnalysisSegment"
-                    selectedKey="CUSTOMER"
-                    selectionChange=".onAnalysisSegmentChange"
-                    visible="true"
-                    class="sapUiSmallMarginBegin sapUiTinyMarginBottom">
-                    <items>
-                        <SegmentedButtonItem text="고객유형별" key="CUSTOMER"/>
-                        <SegmentedButtonItem text="제품별" key="MATERIAL"/>
-                    </items>
-                </SegmentedButton>
+                <VBox
+                    id="idDetailBox"
+                    visible="false"
+                    width="100%" 
+                    class="sapUiSmallMarginTop">
+
+                    <SegmentedButton
+                        id="idAnalysisSegment"
+                        selectedKey="C"
+                        selectionChange=".onAnalysisSegmentChange"
+                        class="sapUiTinyMarginBottom">
+                        <items>
+                            <SegmentedButtonItem key="C" text="고객유형별"/>
+                            <SegmentedButtonItem key="M" text="제품별"/>
+                        </items>
+                    </SegmentedButton>
+
+                    <Title
+                        id="idDetailTitle"
+                        text="상세 수익성 분석"
+                        level="H4"
+                        class="sapUiTinyMarginBottom"/>
+
+                    <Table
+                        id="idDetailTable"
+                        width="100%"
+                        items="{detail>/detailData}"
+                        class="sapUiTinyMarginBottom">
+
+                        <columns>
+                            <Column><Text id="idDimensionColumnText" text="고객유형"/></Column>
+                            <Column hAlign="End"><Text text="매출"/></Column>
+                            <Column hAlign="End"><Text text="원가"/></Column>
+                            <Column hAlign="End"><Text text="이익"/></Column>
+                            <Column hAlign="End"><Text text="이익률"/></Column>
+                        </columns>
+
+                        <items>
+                            <ColumnListItem>
+                                <cells>
+                                <!--number="{detail>Revenue}"-->
+                                    <Text text="{detail>Dimension}"/>
+                                    <ObjectNumber
+                                        number="{ parts: [ 'detail>Revenue',
+                                                           'detail>Waers' ],
+                                                  type: 'sap.ui.model.type.Currency',
+                                                  formatOptions: { showMeasure: false } }"
+                                        unit="{detail>Waers}"/>
+                                    
+                                    <ObjectNumber
+                                        number="{ parts: [ 'detail>Cost',
+                                                           'detail>Waers' ],
+                                                  type: 'sap.ui.model.type.Currency',
+                                                  formatOptions: { showMeasure: false } }"
+                                        unit="{detail>Waers}"/>
+                                    <ObjectNumber 
+                                        number="{ parts: [ 'detail>Profit',
+                                                           'detail>Waers' ],
+                                                  type: 'sap.ui.model.type.Currency',
+                                                  formatOptions: { showMeasure: false } }"
+                                        unit="{detail>Waers}"/>
+                                    <ObjectNumber
+                                        number="{detail>Profitrate}"
+                                        unit="%"/>
+                                </cells>
+                            </ColumnListItem>
+                        </items>
+                    </Table>
+                    <VBox
+                        id="idDetailChartBox"
+                        width="100%"
+                        class="sapUiSmallMarginTop">
+
+                        <viz:VizFrame
+                            id="idDetailBarChart"
+                            width="100%"
+                            height="22rem"
+                            vizType="column"
+                            class="sapUiSmallMarginBottom">
+
+                            <viz:dataset>
+                                <viz.data:FlattenedDataset data="{detail>/detailChartData}">
+                                    <viz.data:dimensions>
+                                        <viz.data:DimensionDefinition
+                                            name="분석대상"
+                                            value="{detail>Dimension}" />
+                                    </viz.data:dimensions>
+
+                                    <viz.data:measures>
+                                        <viz.data:MeasureDefinition
+                                            name="매출"
+                                            value="{detail>Revenue}" />
+                                        <viz.data:MeasureDefinition
+                                            name="원가"
+                                            value="{detail>Cost}" />
+                                        <viz.data:MeasureDefinition
+                                            name="이익"
+                                            value="{detail>Profit}" />
+                                    </viz.data:measures>
+                                </viz.data:FlattenedDataset>
+                            </viz:dataset>
+
+                            <viz:feeds>
+                                <viz.feeds:FeedItem
+                                    uid="valueAxis"
+                                    type="Measure"
+                                    values="매출,원가" />
+                                <viz.feeds:FeedItem
+                                    uid="categoryAxis"
+                                    type="Dimension"
+                                    values="분석대상" />
+                            </viz:feeds>
+                        </viz:VizFrame>
+
+                        <viz:VizFrame
+                            id="idDetailDonutChart"
+                            width="100%"
+                            height="20rem"
+                            vizType="donut">
+
+                            <viz:dataset>
+                                <viz.data:FlattenedDataset data="{detail>/detailDonutData}">
+                                    <viz.data:dimensions>
+                                        <viz.data:DimensionDefinition
+                                            name="분석대상"
+                                            value="{detail>Dimension}" />
+                                    </viz.data:dimensions>
+
+                                    <viz.data:measures>
+                                        <viz.data:MeasureDefinition
+                                            name="매출비중"
+                                            value="{detail>Revenue}" />
+                                    </viz.data:measures>
+                                </viz.data:FlattenedDataset>
+                            </viz:dataset>
+
+                            <viz:feeds>
+                                <viz.feeds:FeedItem
+                                    uid="size"
+                                    type="Measure"
+                                    values="매출비중" />
+                                <viz.feeds:FeedItem
+                                    uid="color"
+                                    type="Dimension"
+                                    values="분석대상" />
+                            </viz:feeds>
+                        </viz:VizFrame>
+
+                    </VBox>
+
+                </VBox>
                 <viz:VizFrame
                     id="idSalesCompareChart"
                     width="100%"
@@ -238,3 +400,4 @@
         </IconTabBar>
     </Page>
 </mvc:View>
+                    
