@@ -21,10 +21,10 @@ sap.ui.define([
 
             this._sCurrGjahr = String(oToday.getFullYear());
             this._sCurrMonat = String(oToday.getMonth() + 1).padStart(2, "0");
-            this._sCurrWeeks = this._getWeekNo(oToday);
+            //this._sCurrWeeks = this._getWeekNo(oToday);
             //this._sCurrGjahr = "2026";
             //this._sCurrMonat = "06";
-            //this._sCurrWeeks = "23";
+            this._sCurrWeeks = "23";
 
             var oMonat = this.byId("idMonat");
 
@@ -74,7 +74,9 @@ sap.ui.define([
                 ContributionRate: 0,
                 Waers: "KRW",
                 chartTitle: "",
-                chartData: []
+                chartData: [],
+                trendTitle: "",
+                trendData: []
             }), "selected");
 
             // 전체일 때만 보이는 차트
@@ -454,7 +456,37 @@ sap.ui.define([
             });
         },
         onAnalysisSegmentChange() {
-            this.byId("idFCL").setLayout("OneColumn");
+        //     this.byId("idFCL").setLayout("OneColumn");
+
+        //     var oDetailModel = this.getView().getModel("detail");
+        //     oDetailModel.setProperty("/detailData", []);
+        //     oDetailModel.setProperty("/detailDonutData", []);
+
+        //     this._bindDetailAnalysis();
+            var oFCL = this.byId("idFCL");
+            if (oFCL) {
+                oFCL.setLayout("OneColumn");
+            }
+
+            var oTable = this.byId("idDetailTable");
+            if (oTable) {
+                oTable.removeSelections(true);
+            }
+
+            this.getView().getModel("selected").setData({
+                title: "선택 상세 분석",
+                Dimension: "",
+                Revenue: 0,
+                Cost: 0,
+                Profit: 0,
+                Profitrate: 0,
+                ContributionRate: 0,
+                Waers: "KRW",
+                chartTitle: "",
+                chartData: [],
+                trendTitle: "",
+                trendData: []
+            });
 
             var oDetailModel = this.getView().getModel("detail");
             oDetailModel.setProperty("/detailData", []);
@@ -570,6 +602,7 @@ sap.ui.define([
                     oDetailModel.setProperty("/detailDonutData", aDonutData);
 
                     this._setDetailChartTitle();
+                    this._syncSelectedDetailAfterRefresh(aResult);
 
                     var oDonut = this.byId("idDetailDonutChart");
                     if (oDonut) {
@@ -662,7 +695,6 @@ sap.ui.define([
         },
         onPeriodChange() {
             this._setCompPeriodText();
-            this.byId("idFCL").setLayout("OneColumn");
             this._bindKpiTile();
         },
         onDetailRowSelect(oEvent) {
@@ -672,6 +704,9 @@ sap.ui.define([
             }
 
             var oRow = oItem.getBindingContext("detail").getObject();
+            this._setSelectedDetail(oRow);
+        },
+        _setSelectedDetail(oRow) {
             var sDetailType = this.byId("idAnalysisSegment").getSelectedKey();
 
             var aDetailData = this.getView().getModel("detail").getProperty("/detailData") || [];
@@ -715,13 +750,179 @@ sap.ui.define([
                 ContributionRate: nContributionRate.toFixed(2),
                 Waers: oRow.Waers || "KRW",
                 chartTitle: sChartTitle,
-                chartData: aChartData
+                chartData: aChartData,
+                trendTitle: sChartTitle,
+                trendData: []
             });
 
             this.byId("idFCL").setLayout("TwoColumnsMidExpanded");
+            this._bindSelectedTrend(oRow);
         },
-                onCloseFlexibleDetail() {
+        _syncSelectedDetailAfterRefresh(aResult) {
+            var oFCL = this.byId("idFCL");
+            var oSelectedModel = this.getView().getModel("selected");
+            var sSelectedDimension = oSelectedModel.getProperty("/Dimension");
+            var bKeepSelectedDetail = oFCL && oFCL.getLayout() !== "OneColumn" && !!sSelectedDimension;
+
+            if (!bKeepSelectedDetail) {
+                if (oFCL) {
+                    oFCL.setLayout("OneColumn");
+                }
+                return;
+            }
+
+            var oSelectedRow = (aResult || []).find(function (oRow) {
+                return oRow.Dimension === sSelectedDimension;
+            });
+
+            if (oSelectedRow) {
+                this._setSelectedDetail(oSelectedRow);
+            } else {
+                this.onCloseFlexibleDetail();
+                oSelectedModel.setProperty("/trendData", []);
+            }
+        },
+        _bindSelectedTrend(oRow) {
+            var sPeriodType = this.byId("idPeriodType").getSelectedKey();
+            var sDetailType = this.byId("idAnalysisSegment").getSelectedKey();
+            var oPeriod = this._getCurrentPeriodForTrend(sPeriodType);
+
+            var aFilters = [
+                new sap.ui.model.Filter("Gjahr", sap.ui.model.FilterOperator.EQ, this._sCurrGjahr),
+                new sap.ui.model.Filter("Monat", sap.ui.model.FilterOperator.EQ, oPeriod.Monat),
+                new sap.ui.model.Filter("Weeks", sap.ui.model.FilterOperator.EQ, oPeriod.Weeks),
+                new sap.ui.model.Filter("Periodtype", sap.ui.model.FilterOperator.EQ, sPeriodType),
+                new sap.ui.model.Filter("Analysistype", sap.ui.model.FilterOperator.EQ, this._sAnalysisType),
+                new sap.ui.model.Filter("Detailtype", sap.ui.model.FilterOperator.EQ, sDetailType),
+                new sap.ui.model.Filter("Dimension", sap.ui.model.FilterOperator.EQ, oRow.Dimension)
+            ];
+
+            this._setSelectedTrendChartFeeds(sDetailType);
+            this._setSelectedTrendVizProperties(oRow.Dimension, sDetailType, sPeriodType);
+
+            this.getView().getModel().read("/ProfitTrendSet", {
+                filters: aFilters,
+                success: function (oData) {
+                    var aTrendData = this._normalizeTrendData(oData.results || [], sPeriodType);
+                    this.getView().getModel("selected").setProperty("/trendData", aTrendData);
+                }.bind(this)
+            });
+        },
+        _getCurrentPeriodForTrend(sPeriodType) {
+            if (sPeriodType === "M") {
+                return {
+                    Monat: this._sCurrMonat,
+                    Weeks: "00"
+                };
+            }
+
+            return {
+                Monat: "00",
+                Weeks: this._sCurrWeeks
+            };
+        },
+        _normalizeTrendData(aRows, sPeriodType) {
+            var aTrendData = aRows.map(function (oRow) {
+                return {
+                    Monat: oRow.Monat,
+                    Weeks: oRow.Weeks,
+                    Periodlabel: oRow.Periodlabel || this._getTrendPeriodLabel(oRow, sPeriodType),
+                    Revenue: Number(oRow.Revenue || 0),
+                    Cost: Number(oRow.Cost || 0),
+                    Profit: Number(oRow.Profit || 0),
+                    Profitrate: Number(oRow.Profitrate || 0)
+                };
+            }.bind(this));
+
+            aTrendData.sort(function (oA, oB) {
+                var nA = sPeriodType === "M" ? Number(oA.Monat || 0) : Number(oA.Weeks || 0);
+                var nB = sPeriodType === "M" ? Number(oB.Monat || 0) : Number(oB.Weeks || 0);
+                return nA - nB;
+            });
+
+            if (sPeriodType === "M") {
+                var nCurrMonat = Number(this._sCurrMonat || 0);
+                return aTrendData.filter(function (oRow) {
+                    var nMonat = Number(oRow.Monat || 0);
+                    return nMonat >= 1 && nMonat <= nCurrMonat;
+                });
+            }
+
+            return aTrendData.slice(-6);
+        },
+        _getTrendPeriodLabel(oRow, sPeriodType) {
+            if (sPeriodType === "M") {
+                return Number(oRow.Monat || 0) + "월";
+            }
+
+            return Number(oRow.Weeks || 0) + "주";
+        },
+        _setSelectedTrendChartFeeds(sDetailType) {
+            var oChart = this.byId("idSelectedBarChart");
+            var sSecondMeasure = sDetailType === "C" ? "이익" : "원가";
+
+            if (!oChart) {
+                return;
+            }
+
+            oChart.removeAllFeeds();
+            oChart.addFeed(new sap.viz.ui5.controls.common.feeds.FeedItem({
+                uid: "valueAxis",
+                type: "Measure",
+                values: ["매출", sSecondMeasure]
+            }));
+            oChart.addFeed(new sap.viz.ui5.controls.common.feeds.FeedItem({
+                uid: "valueAxis2",
+                type: "Measure",
+                values: ["이익률"]
+            }));
+            oChart.addFeed(new sap.viz.ui5.controls.common.feeds.FeedItem({
+                uid: "categoryAxis",
+                type: "Dimension",
+                values: ["기간"]
+            }));
+        },
+        _setSelectedTrendVizProperties(sDimension, sDetailType, sPeriodType) {
+            var sSecondMeasure = sDetailType === "C" ? "이익" : "원가";
+            var sPeriodText = sPeriodType === "M" ? "1월 ~ " + Number(this._sCurrMonat || 0) + "월" : "최근 6주";
+            var sTitle = sDimension + " " + sPeriodText + " 매출/" + sSecondMeasure + "/이익률 추이";
+
+            this.getView().getModel("selected").setProperty("/trendTitle", sTitle);
+            this.byId("idSelectedBarChart").setVizProperties({
+                title: {
+                    visible: true,
+                    text: sTitle
+                },
+                valueAxis: {
+                    title: {
+                        visible: true,
+                        text: "금액"
+                    }
+                },
+                valueAxis2: {
+                    title: {
+                        visible: true,
+                        text: "이익률(%)"
+                    }
+                },
+                plotArea: {
+                    dataLabel: {
+                        visible: true
+                    },
+                    dataShape: {
+                        primaryAxis: ["bar", "bar"],
+                        secondaryAxis: ["line"]
+                    }
+                }
+            });
+        },
+        onCloseFlexibleDetail() {
             this.byId("idFCL").setLayout("OneColumn");
+
+            var oTable = this.byId("idDetailTable");
+            if (oTable) {
+                oTable.removeSelections(true);
+            }
         }
     });
 });
