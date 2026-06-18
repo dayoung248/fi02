@@ -797,7 +797,7 @@ sap.ui.define([
                 new sap.ui.model.Filter("Dimension", sap.ui.model.FilterOperator.EQ, oRow.Dimension)
             ];
 
-            this._setSelectedTrendChartFeeds(sDetailType);
+            this._setSelectedTrendChartFeeds();
             this._setSelectedTrendVizProperties(oRow.Dimension, sDetailType, sPeriodType);
 
             this.getView().getModel().read("/ProfitTrendSet", {
@@ -857,25 +857,59 @@ sap.ui.define([
 
             return Number(oRow.Weeks || 0) + "주";
         },
-        _setSelectedTrendChartFeeds(sDetailType) {
+        _getSelectedTrendChartOptions() {
+            var aPrimaryMeasures = [];
+            var bShowProfitRate = this.byId("idTrendProfitRateCheck").getSelected();
+
+            if (this.byId("idTrendRevenueCheck").getSelected()) {
+                aPrimaryMeasures.push("매출");
+            }
+
+            if (this.byId("idTrendCostCheck").getSelected()) {
+                aPrimaryMeasures.push("원가");
+            }
+
+            if (this.byId("idTrendProfitCheck").getSelected()) {
+                aPrimaryMeasures.push("이익");
+            }
+
+            if (!aPrimaryMeasures.length && !bShowProfitRate) {
+                this.byId("idTrendRevenueCheck").setSelected(true);
+                aPrimaryMeasures.push("매출");
+            }
+
+            return {
+                primaryMeasures: aPrimaryMeasures,
+                showProfitRate: bShowProfitRate,
+                showLabels: this.byId("idTrendLabelSwitch").getState()
+            };
+        },
+        _setSelectedTrendChartFeeds() {
             var oChart = this.byId("idSelectedBarChart");
-            var sSecondMeasure = sDetailType === "C" ? "이익" : "원가";
+            var oOptions = this._getSelectedTrendChartOptions();
 
             if (!oChart) {
                 return;
             }
 
             oChart.removeAllFeeds();
-            oChart.addFeed(new sap.viz.ui5.controls.common.feeds.FeedItem({
-                uid: "valueAxis",
-                type: "Measure",
-                values: ["매출", sSecondMeasure]
-            }));
-            oChart.addFeed(new sap.viz.ui5.controls.common.feeds.FeedItem({
-                uid: "valueAxis2",
-                type: "Measure",
-                values: ["이익률"]
-            }));
+
+            if (oOptions.primaryMeasures.length) {
+                oChart.addFeed(new sap.viz.ui5.controls.common.feeds.FeedItem({
+                    uid: "valueAxis",
+                    type: "Measure",
+                    values: oOptions.primaryMeasures
+                }));
+            }
+
+            if (oOptions.showProfitRate) {
+                oChart.addFeed(new sap.viz.ui5.controls.common.feeds.FeedItem({
+                    uid: "valueAxis2",
+                    type: "Measure",
+                    values: ["이익률"]
+                }));
+            }
+
             oChart.addFeed(new sap.viz.ui5.controls.common.feeds.FeedItem({
                 uid: "categoryAxis",
                 type: "Dimension",
@@ -888,6 +922,8 @@ sap.ui.define([
             var sTitle = sDimension + " " + sPeriodText + " 매출/" + sSecondMeasure + "/이익률 추이";
 
             this.getView().getModel("selected").setProperty("/trendTitle", sTitle);
+            var oOptions = this._getSelectedTrendChartOptions();
+
             this.byId("idSelectedBarChart").setVizProperties({
                 title: {
                     visible: true,
@@ -907,14 +943,27 @@ sap.ui.define([
                 },
                 plotArea: {
                     dataLabel: {
-                        visible: true
+                        visible: oOptions.showLabels
                     },
                     dataShape: {
-                        primaryAxis: ["bar", "bar"],
-                        secondaryAxis: ["line"]
+                        primaryAxis: oOptions.primaryMeasures.map(function () {
+                            return "bar";
+                        }),
+                        secondaryAxis: oOptions.showProfitRate ? ["line"] : []
                     }
                 }
             });
+        },
+        onSelectedTrendOptionChange() {
+            var oSelectedModel = this.getView().getModel("selected");
+            var sDimension = oSelectedModel.getProperty("/Dimension");
+
+            this._setSelectedTrendChartFeeds();
+            this._setSelectedTrendVizProperties(
+                sDimension,
+                this.byId("idAnalysisSegment").getSelectedKey(),
+                this.byId("idPeriodType").getSelectedKey()
+            );
         },
         onCloseFlexibleDetail() {
             this.byId("idFCL").setLayout("OneColumn");

@@ -281,18 +281,20 @@
                                         selectionChange=".onDetailRowSelect">
 
                                         <columns>
-                                            <Column><ObjectIdentifier id="idDimensionColumnText" text="고객유형"/></Column>
-                                            <Column hAlign="End"><Text text="매출"/></Column>
-                                            <Column hAlign="End"><Text text="원가"/></Column>
-                                            <Column hAlign="End"><Text text="이익"/></Column>
-                                            <Column hAlign="End"><Text text="이익률"/></Column>
+                                            <Column width="4.8rem">
+                                                <Text id="idDimensionColumnText" text="고객유형" wrapping="false"/>
+                                            </Column>
+                                            <Column width="4.8rem" hAlign="End"><Text text="매출" wrapping="false"/></Column>
+                                            <Column width="4.8rem" hAlign="End"><Text text="원가" wrapping="false"/></Column>
+                                            <Column width="4.8rem" hAlign="End"><Text text="이익" wrapping="false"/></Column>
+                                            <Column width="4.2rem" hAlign="End"><Text text="이익률" wrapping="false"/></Column>
                                         </columns>
 
                                         <items>
                                             <ColumnListItem type="Navigation">
                                                 <cells>
                                                 <!--number="{detail>Revenue}"-->
-                                                    <Text text="{detail>Dimension}"/>
+                                                    <Text text="{detail>Dimension}" wrapping="true"/>
                                                     <ObjectNumber
                                                         number="{ parts: [ 'detail>Revenue',
                                                                         'detail>Waers' ],
@@ -404,7 +406,7 @@
                                 </Page>
                             <!--</VBox>-->
                         </f:beginColumnPages>
-                        <f:midColumnPages>
+                        <f:midColumnPages >
                             <Page
                                 id="idSelectedDetailPage"
                                 title="{selected>/title}"
@@ -413,7 +415,7 @@
 
                                 <VBox >
                                     <HBox wrap="Wrap" alignContent="Center" class="sapUiSmallMarginTopBottom" >
-                                        <GenericTile header="매출" class="sapUiSmallMarginBeginEnd" frameType="OneByHalf">
+                                        <GenericTile header="매출" class="sapUiTinyMarginBeginEnd" frameType="OneByHalf">
                                             <TileContent>
                                                 <NumericContent
                                                     value="{ parts:['selected>/Revenue','selected>/Waers'], type:'sap.ui.model.type.Currency', formatOptions:{ showMeasure:false } }"
@@ -422,7 +424,7 @@
                                             </TileContent>
                                         </GenericTile>
 
-                                        <GenericTile header="원가" class="sapUiSmallMarginEnd" frameType="OneByHalf">
+                                        <GenericTile header="원가" class="sapUiTinyMarginEnd" frameType="OneByHalf">
                                             <TileContent>
                                                 <NumericContent
                                                     value="{ parts:['selected>/Cost','selected>/Waers'], type:'sap.ui.model.type.Currency', formatOptions:{ showMeasure:false } }"
@@ -431,7 +433,7 @@
                                             </TileContent>
                                         </GenericTile>
 
-                                        <GenericTile header="이익" class="sapUiSmallMarginEnd" frameType="OneByHalf">
+                                        <GenericTile header="이익" class="sapUiTinyMarginEnd" frameType="OneByHalf">
                                             <TileContent>
                                                 <NumericContent
                                                     value="{ parts:['selected>/Profit','selected>/Waers'], type:'sap.ui.model.type.Currency', formatOptions:{ showMeasure:false } }"
@@ -441,7 +443,7 @@
                                             </TileContent>
                                         </GenericTile>
 
-                                        <GenericTile header="매출기여도" class="sapUiSmallMarginEnd" frameType="OneByHalf">
+                                        <GenericTile header="매출기여도" class="sapUiTinyMarginEnd" frameType="OneByHalf">
                                             <TileContent>
                                                 <NumericContent
                                                     value="{selected>/ContributionRate}"
@@ -449,6 +451,40 @@
                                                     truncateValueTo="8"/>
                                             </TileContent>
                                         </GenericTile>
+                                    </HBox>
+
+                                    <HBox
+                                        wrap="Wrap"
+                                        alignItems="Center"
+                                        class="sapUiTinyMarginBegin sapUiTinyMarginBottom">
+                                        <CheckBox
+                                            id="idTrendRevenueCheck"
+                                            text="매출"
+                                            selected="true"
+                                            select=".onSelectedTrendOptionChange"/>
+                                        <CheckBox
+                                            id="idTrendCostCheck"
+                                            text="원가"
+                                            selected="true"
+                                            select=".onSelectedTrendOptionChange"/>
+                                        <CheckBox
+                                            id="idTrendProfitCheck"
+                                            text="이익"
+                                            selected="true"
+                                            select=".onSelectedTrendOptionChange"/>
+                                        <CheckBox
+                                            id="idTrendProfitRateCheck"
+                                            text="이익률"
+                                            selected="true"
+                                            select=".onSelectedTrendOptionChange"/>
+                                        <ToolbarSeparator class="sapUiSmallMarginBeginEnd"/>
+                                        <Label text="레이블" class="sapUiTinyMarginEnd"/>
+                                        <Switch
+                                            id="idTrendLabelSwitch"
+                                            state="true"
+                                            customTextOn="ON"
+                                            customTextOff="OFF"
+                                            change=".onSelectedTrendOptionChange"/>
                                     </HBox>
 
                                     <viz:VizFrame
