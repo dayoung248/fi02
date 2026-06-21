@@ -1,0 +1,22 @@
+.fi02DimensionCell {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+
+.fi02DimensionCode {
+    font-weight: 700;
+}
+
+.fi02DimensionText {
+    color: #556b82;
+    font-size: 0.8125rem;
+    line-height: 1.25;
+    margin-top: 0.125rem;
+}
+
+.fi02NoKpiIndicator .sapMNCIndicator,
+.fi02NoKpiIndicator .sapMNCIndIcon,
+.fi02NoKpiIndicator .sapMNCIndScale .sapUiIcon,
+.fi02NoKpiIndicator [id$="-indicator"] {
+    display: none !important;
+}

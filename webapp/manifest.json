@@ -62,6 +62,7 @@
       "i18n": {
         "type": "sap.ui.model.resource.ResourceModel",
         "settings": {
+          "useBatch": false,
           "bundleName": "code.t4.ui5.fi02.i18n.i18n"
         }
       },

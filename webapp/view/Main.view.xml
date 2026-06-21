@@ -1,4 +1,4 @@
-<mvc:View xmlns:core="sap.ui.core" controllerName="code.t4.ui5.fi02.controller.Main"
+﻿<mvc:View xmlns:core="sap.ui.core" controllerName="code.t4.ui5.fi02.controller.Main"
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
     xmlns:f="sap.f"
@@ -34,11 +34,12 @@
                 <content>
             
                     <HBox >
-                        <Label text="비교 기준" class="sapUiSmallMarginEnd"/>
+                        <Label text="비교 기준" class="sapUiTinyMarginEnd sapUiTinyMarginTop"/>
                         <Select
                             id="idPeriodType"
                             selectedKey="M"
-                            change=".onPeriodTypeChange" >
+                            change=".onPeriodTypeChange" 
+                            class="sapUiTinyMarginEnd sapUiTinyMarginTop">
                             <items>
                                 <core:Item key="M" text="월 기준"/>
                                 <core:Item key="W" text="주 기준"/>
@@ -47,18 +48,16 @@
                         <Select
                             id="idMonat"
                             selectedKey="05"
-                            change=".onMonatChange" >
+                            change=".onMonatChange"
+                            class="sapUiTinyMarginEnd sapUiTinyMarginTop" >
                         </Select>
                         <Select
                             id="idWeeks"
                             selectedKey="00"
-                            change=".onPeriodChange" >
+                            width="18rem"
+                            change=".onPeriodChange"
+                            class="sapUiTinyMarginEnd sapUiTinyMarginTop" >
                         </Select>
-                        <Input
-                            id="idCompPeriodText"
-                            editable="false"
-                            width="16rem"
-                            class="sapUiTinyMarginBegin"/>
                     </HBox>
                     
                     <HBox
@@ -70,26 +69,28 @@
                         <VBox class="sapUiTinyMarginBegin sapUiSmallMarginEnd">
                             <GenericTile
                                 id="idSalesTile"
-                                header="당기매출"
-                                subheader="비교기간 대비"
+                                header="당기매출(단위: 원)"
+                                
                                 width="18rem"
                                 frameType="TwoByOne">
                                 <TileContent unit="" footer="">
                                     <VBox>
                                         <NumericContent
+                                            id="idSalesNumeric"
                                             value="{ parts: [ 'Salesamt',
                                                             'Waers' ],
                                                             type: 'sap.ui.model.type.Currency',
                                                             formatOptions: { showMeasure: false } }"
                                             scale="{Waers}"
                                             valueColor="{= ${Prevsalesrate} >= 0 ? 'Good' : 'Error' }"
-                                            indicator="{= ${Prevsalesrate} > 0 ? 'Up' : ${Prevsalesrate} &lt; 0 ? 'Down' : 'None' }"
+                                            indicator="None"
                                             truncateValueTo="12"
                                             withMargin="false" /> 
 
                                         <ObjectStatus
-                                            text="{= ${Compsalesamt} === '0.000' ? '비교기간 매출 없음' : '비교기간 대비 ' + ${Prevsalesrate} + '%' }"
-                                            state="{= ${Compsalesamt} === '0.000' ? 'None' : ${Prevsalesrate} >= 0 ? 'Success' : 'Error' }"/>
+                                            id="idSalesKpiStatus"
+                                            text="{= ${Compsalesamt} === 0 || ${Compsalesamt} === '0' || ${Compsalesamt} === '0.000' ? '비교기간 매출 없음' : '비교기간 대비 ' + ${Prevsalesrate} + '%' }"
+                                            state="{= ${Compsalesamt} === 0 || ${Compsalesamt} === '0' || ${Compsalesamt} === '0.000' ? 'None' : ${Prevsalesrate} >= 0 ? 'Success' : 'Error' }"/>
                                     </VBox>
                                     <!-- value="{ parts: [ 'Salesamt',
                                         'Waers' ],
@@ -107,26 +108,28 @@
 
                         <VBox class="sapUiSmallMarginEnd">
                             <GenericTile
-                                header="당기원가"
-                                subheader="비교기간 대비"
+                                header="당기원가(단위: 원)"
+
                                 width="18rem"
                                 frameType="TwoByOne">
                                 <TileContent footer="">
                                     <VBox>
                                         <NumericContent
+                                            id="idCostNumeric"
                                             value="{ parts: [ 'Costamt',
                                                             'Waers' ],
                                                             type: 'sap.ui.model.type.Currency',
                                                             formatOptions: { showMeasure: false } }"
                                             scale="{Waers}"
                                             valueColor="{= ${Prevcostrate} >= 0 ? 'Error' : 'Good' }"
-                                            indicator="{= ${Prevcostrate} > 0 ? 'Up' : ${Prevcostrate} &lt; 0 ? 'Down' : 'None' }"
+                                            indicator="None"
                                             truncateValueTo="12"
                                             withMargin="false" 
                                             width="100%"/>
                                         <ObjectStatus
-                                            text="{= ${Compcostamt} === '0.000' ? '비교기간 원가 없음' : '비교기간 대비 ' + ${Prevcostrate} + '%' }"
-                                            state="{= ${Compcostamt} === '0.000' ? 'None' : ${Prevcostrate} >= 0 ? 'Error' : 'Success' }"/>
+                                            id="idCostKpiStatus"
+                                            text="{= ${Compcostamt} === 0 || ${Compcostamt} === '0' || ${Compcostamt} === '0.000' ? '비교기간 원가 없음' : '비교기간 대비 ' + ${Prevcostrate} + '%' }"
+                                            state="{= ${Compcostamt} === 0 || ${Compcostamt} === '0' || ${Compcostamt} === '0.000' ? 'None' : ${Prevcostrate} >= 0 ? 'Error' : 'Success' }"/>
                                     </VBox>
                                 </TileContent>
                             </GenericTile>
@@ -134,26 +137,28 @@
 
                         <VBox class="sapUiSmallMarginEnd">
                             <GenericTile
-                                header="당기이익"
-                                subheader="비교기간 대비"
+                                header="당기이익(단위: 원)"
+                                
                                 width="18rem"
                                 frameType="TwoByOne">
                                 <TileContent unit="" footer="">
                                     <VBox>
                                         <NumericContent
+                                            id="idProfitNumeric"
                                             value="{ parts: [ 'Profitamt',
                                                             'Waers' ],
                                                             type: 'sap.ui.model.type.Currency',
                                                             formatOptions: { showMeasure: false } }"
                                             scale="{Waers}"
                                             valueColor="{= ${Prevprofitrate} >= 0 ? 'Good' : 'Error' }"
-                                            indicator="{= ${Prevprofitrate} > 0 ? 'Up' : ${Prevprofitrate} &lt; 0 ? 'Down' : 'None' }"
+                                            indicator="None"
                                             truncateValueTo="12"
                                             withMargin="false" 
                                             width="100%"/>
                                         <ObjectStatus
-                                            text="{= ${Compprofitamt} === '0.000' ? '비교기간 이익 없음' : '비교기간 대비 ' + ${Prevprofitrate} + '%' }"
-                                            state="{= ${Compprofitamt} === '0.000' ? 'None' : ${Prevprofitrate} >= 0 ? 'Success' : 'Error' }"/>
+                                            id="idProfitKpiStatus"
+                                            text="{= ${Compprofitamt} === 0 || ${Compprofitamt} === '0' || ${Compprofitamt} === '0.000' ? '비교기간 이익 없음' : '비교기간 대비 ' + ${Prevprofitrate} + '%' }"
+                                            state="{= ${Compprofitamt} === 0 || ${Compprofitamt} === '0' || ${Compprofitamt} === '0.000' ? 'None' : ${Prevprofitrate} >= 0 ? 'Success' : 'Error' }"/>
                                     </VBox>
                                 </TileContent>
                             </GenericTile>
@@ -161,8 +166,8 @@
 
                         <VBox class="sapUiSmallMarginEnd">
                             <GenericTile
-                                header="이익률"
-                                subheader="비교기간 대비"
+                                header="이익률(단위: %)"
+                                
                                 width="18rem"
                                 frameType="TwoByOne">
                                 <!--valueColor="Good"
@@ -171,16 +176,18 @@
                                 <TileContent > <!--unit="%" footer="당기 기준">-->
                                     <VBox>
                                         <NumericContent
+                                            id="idProfitRateNumeric"
                                             value="{Profitrate}"
                                             scale="%"
                                             valueColor="{= ${Compprofitrate} >= 0 ? 'Good' : 'Error' }"
-                                            indicator="{= ${Compprofitrate} > 0 ? 'Up' : ${Compprofitrate} &lt; 0 ? 'Down' : 'None' }"
+                                            indicator="None"
                                             truncateValueTo="8"
                                             withMargin="false" 
                                             width="100%"/>
                                         <ObjectStatus
-                                            text="{= ${Compsalesamt} === '0.000' &amp;&amp; ${Compcostamt} !== '0.000' ? '비교기간 매출 미발생' : ${Compsalesamt} === '0.000' ? '비교기준 없음' : '비교기간 대비 ' + ${Compprofitrate} + '%p' }"
-                                            state="{= ${Compsalesamt} === '0.000' ? 'None' : ${Compprofitrate} > 0 ? 'Success' : ${Compprofitrate} &lt; 0 ? 'Error' : 'None' }"/>
+                                            id="idProfitRateKpiStatus"
+                                            text="{= (${Compsalesamt} === 0 || ${Compsalesamt} === '0' || ${Compsalesamt} === '0.000') &amp;&amp; ${Compcostamt} !== 0 &amp;&amp; ${Compcostamt} !== '0' &amp;&amp; ${Compcostamt} !== '0.000' ? '비교기간 매출 미발생' : ${Compsalesamt} === 0 || ${Compsalesamt} === '0' || ${Compsalesamt} === '0.000' ? '비교기준 없음' : '비교기간 대비 ' + ${Compprofitrate} + '%p' }"
+                                            state="{= ${Compsalesamt} === 0 || ${Compsalesamt} === '0' || ${Compsalesamt} === '0.000' ? 'None' : ${Compprofitrate} > 0 ? 'Success' : ${Compprofitrate} &lt; 0 ? 'Error' : 'None' }"/>
                                     </VBox>
                                 </TileContent>
                                 
@@ -196,7 +203,7 @@
                             vizProperties="{
                                 'title': {
                                     'visible': true,
-                                    'text': '일반판매 vs 렌탈판매 매출 비교'
+                                    'text': '일반판매 vs 렌탈판매 매출/원가/이익 비교'
                                 }
                             }">
 
@@ -210,12 +217,16 @@
                                     <viz.data:DimensionDefinition
                                         name="판매유형"
                                         value="{chart>SalesTypeText}" />
+
+                                    <viz.data:DimensionDefinition
+                                        name="항목"
+                                        value="{chart>Metric}" />
                                 </viz.data:dimensions>
 
                                 <viz.data:measures>
                                     <viz.data:MeasureDefinition
-                                        name="매출"
-                                        value="{chart>Sales}" />
+                                        name="금액"
+                                        value="{chart>Amount}" />
                                 </viz.data:measures>
                             </viz.data:FlattenedDataset>
                         </viz:dataset>
@@ -224,25 +235,25 @@
                             <viz.feeds:FeedItem
                                 uid="valueAxis"
                                 type="Measure"
-                                values="매출" />
+                                values="금액" />
 
                             <viz.feeds:FeedItem
                                 uid="categoryAxis"
                                 type="Dimension"
-                                values="기간" />
+                                values="기간,판매유형" />
 
                             <viz.feeds:FeedItem
                                 uid="color"
                                 type="Dimension"
-                                values="판매유형" />
+                                values="항목" />
                         </viz:feeds>
                     </viz:VizFrame>
                 
                 <VBox
                     id="idDetailBox"
                     visible="false"
+                    height="50rem"
                     width="100%" 
-                    height="65rem"
                     class="sapUiSmallMarginTop">
 
                     <SegmentedButton
@@ -269,7 +280,7 @@
                         </f:layoutData>
 
                         <f:beginColumnPages>
-                            <Page showHeader="false" enableScrolling="false">
+                            <Page showHeader="false" >
                                 <content>
                                     <VBox >
                                     <Table
@@ -281,20 +292,30 @@
                                         selectionChange=".onDetailRowSelect">
 
                                         <columns>
-                                            <Column width="4.8rem">
+                                            <Column id="idDimensionColumn" width="8rem">
                                                 <Text id="idDimensionColumnText" text="고객유형" wrapping="false"/>
                                             </Column>
-                                            <Column width="4.8rem" hAlign="End"><Text text="매출" wrapping="false"/></Column>
-                                            <Column width="4.8rem" hAlign="End"><Text text="원가" wrapping="false"/></Column>
-                                            <Column width="4.8rem" hAlign="End"><Text text="이익" wrapping="false"/></Column>
-                                            <Column width="4.2rem" hAlign="End"><Text text="이익률" wrapping="false"/></Column>
+                                            <Column id="idRevenueColumn" width="4.8rem" hAlign="End"><Text text="매출" wrapping="false"/></Column>
+                                            <Column id="idCostColumn" width="4.8rem" hAlign="End"><Text text="원가" wrapping="false"/></Column>
+                                            <Column id="idProfitColumn" width="4.8rem" hAlign="End"><Text text="이익" wrapping="false"/></Column>
+                                            <Column id="idProfitRateColumn" width="4.2rem" hAlign="End"><Text text="이익률" wrapping="false"/></Column>
                                         </columns>
 
                                         <items>
                                             <ColumnListItem type="Navigation">
                                                 <cells>
                                                 <!--number="{detail>Revenue}"-->
-                                                    <Text text="{detail>Dimension}" wrapping="true"/>
+                                                    <VBox class="fi02DimensionCell">
+                                                        <Text
+                                                            text="{detail>Dimension}"
+                                                            wrapping="false"
+                                                            class="fi02DimensionCode"/>
+                                                        <Text
+                                                            text="{detail>DimensionTxt}"
+                                                            wrapping="true"
+                                                            visible="{= !!${detail>DimensionTxt} }"
+                                                            class="fi02DimensionText"/>
+                                                    </VBox>
                                                     <ObjectNumber
                                                         number="{ parts: [ 'detail>Revenue',
                                                                         'detail>Waers' ],
@@ -372,7 +393,8 @@
                                             id="idDetailDonutChart"
                                             width="100%"
                                             height="20rem"
-                                            vizType="donut">
+                                            vizType="donut"
+                                            class="fi02DetailDonutChart">
 
                                             <viz:dataset>
                                                 <viz.data:FlattenedDataset data="{detail>/detailDonutData}">
@@ -416,7 +438,7 @@
                                 <VBox >
                                     <HBox wrap="Wrap" alignContent="Center" class="sapUiSmallMarginTopBottom" >
                                         <GenericTile header="매출" class="sapUiTinyMarginBeginEnd" frameType="OneByHalf">
-                                            <TileContent>
+                                            <TileContent footer="{selected>/RevenueCompareText}">
                                                 <NumericContent
                                                     value="{ parts:['selected>/Revenue','selected>/Waers'], type:'sap.ui.model.type.Currency', formatOptions:{ showMeasure:false } }"
                                                     scale="{selected>/Waers}"
@@ -425,7 +447,7 @@
                                         </GenericTile>
 
                                         <GenericTile header="원가" class="sapUiTinyMarginEnd" frameType="OneByHalf">
-                                            <TileContent>
+                                            <TileContent footer="{selected>/CostCompareText}">
                                                 <NumericContent
                                                     value="{ parts:['selected>/Cost','selected>/Waers'], type:'sap.ui.model.type.Currency', formatOptions:{ showMeasure:false } }"
                                                     scale="{selected>/Waers}"
@@ -434,7 +456,7 @@
                                         </GenericTile>
 
                                         <GenericTile header="이익" class="sapUiTinyMarginEnd" frameType="OneByHalf">
-                                            <TileContent>
+                                            <TileContent footer="{selected>/ProfitCompareText}">
                                                 <NumericContent
                                                     value="{ parts:['selected>/Profit','selected>/Waers'], type:'sap.ui.model.type.Currency', formatOptions:{ showMeasure:false } }"
                                                     scale="{selected>/Waers}"

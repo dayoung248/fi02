@@ -21,10 +21,10 @@ sap.ui.define([
 
             this._sCurrGjahr = String(oToday.getFullYear());
             this._sCurrMonat = String(oToday.getMonth() + 1).padStart(2, "0");
-            //this._sCurrWeeks = this._getWeekNo(oToday);
+            this._sCurrWeeks = this._getWeekNo(oToday);
             //this._sCurrGjahr = "2026";
             //this._sCurrMonat = "06";
-            this._sCurrWeeks = "23";
+            //this._sCurrWeeks = "23";
 
             var oMonat = this.byId("idMonat");
 
@@ -73,6 +73,12 @@ sap.ui.define([
                 Profitrate: 0,
                 ContributionRate: 0,
                 Waers: "KRW",
+                RevenueCompareText: "",
+                RevenueCompareState: "None",
+                CostCompareText: "",
+                CostCompareState: "None",
+                ProfitCompareText: "",
+                ProfitCompareState: "None",
                 chartTitle: "",
                 chartData: [],
                 trendTitle: "",
@@ -98,13 +104,182 @@ sap.ui.define([
 
             // 6. 최초 KPI 바인딩
             this._bindKpiTile();
+            this._setChartSingleSelection();
+            this._bindKpiTile();
             // this._bindDetailAnalysis();
 
             // this._bindCompareChart();
 
         },
+        _toNumber(vValue) {
+            var nValue = Number(String(vValue || 0).replace(/,/g, "").trim());
+
+            return isFinite(nValue) ? nValue : 0;
+        },
+        _hasKpiComparisonValue(vComparisonAmount) {
+            return Math.abs(this._toNumber(vComparisonAmount)) >= 0.005;
+        },
+        _hasKpiRateChange(vRate) {
+            return Math.abs(this._toNumber(vRate)) >= 0.005;
+        },
+        _isKpiComparisonMissing(sStatusId, vComparisonAmount) {
+            var oStatus = this.byId(sStatusId);
+            var sStatusText = oStatus && oStatus.getText ? oStatus.getText() : "";
+
+            return sStatusText.indexOf("없음") > -1 ||
+                sStatusText.indexOf("미발생") > -1 ||
+                !this._hasKpiComparisonValue(vComparisonAmount);
+        },
+        formatKpiIndicator(vComparisonAmount, vRate) {
+            if (!this._hasKpiComparisonValue(vComparisonAmount) || !this._hasKpiRateChange(vRate)) {
+                return "None";
+            }
+
+            return this._toNumber(vRate) > 0 ? "Up" : "Down";
+        },
+        _applyKpiIndicator(oNumericContent, sIndicator) {
+            var bNoIndicator = sIndicator === "None";
+
+            oNumericContent.unbindProperty("indicator");
+            oNumericContent.toggleStyleClass("fi02NoKpiIndicator", bNoIndicator);
+            oNumericContent.setIndicator(sIndicator);
+        },
+        _resetKpiIndicators() {
+            [
+                "idSalesNumeric",
+                "idCostNumeric",
+                "idProfitNumeric",
+                "idProfitRateNumeric"
+            ].forEach(function (sId) {
+                var oNumericContent = this.byId(sId);
+
+                if (oNumericContent) {
+                    this._applyKpiIndicator(oNumericContent, "None");
+                }
+            }.bind(this));
+        },
+        _toSalesCompareNumber(oRow, sProperty) {
+            return Number((oRow && oRow[sProperty]) || 0);
+        },
+        _getCurrentAnalysisPeriod(sPeriodType) {
+            if (sPeriodType === "M") {
+                return {
+                    Monat: this._sCurrMonat,
+                    Weeks: this._sCurrWeeks
+                };
+            }
+
+            return {
+                Monat: "00",
+                Weeks: this._sCurrWeeks
+            };
+        },
+        _getCurrentClosingWeekKey() {
+            return String(Math.max(Number(this._sCurrWeeks || 1) - 1, 1)).padStart(2, "0");
+        },
+        _getCompareResponsePeriod(oGeneral, oRental, sFallbackMonat, sFallbackWeeks) {
+            var oPeriodRow = (oGeneral && (oGeneral.Monat || oGeneral.Weeks)) ? oGeneral : oRental || {};
+            var sMonat = String(oPeriodRow.Monat || sFallbackMonat || "00").padStart(2, "0");
+            var sWeeks = String(oPeriodRow.Weeks || "").padStart(2, "0");
+
+            if (sWeeks === "00") {
+                sWeeks = String(sFallbackWeeks || "00").padStart(2, "0");
+            }
+
+            return {
+                Monat: sMonat,
+                Weeks: sWeeks
+            };
+        },
+        _getCurrentCompareLabel(sPeriodType, oGeneral, oRental, sFallbackMonat, sFallbackWeeks) {
+            var oPeriod = this._getCompareResponsePeriod(oGeneral, oRental, sFallbackMonat, sFallbackWeeks);
+            var sClosingWeeks = this._getCurrentClosingWeekKey();
+            var sDisplayWeeks = Number(oPeriod.Weeks || 0) > 0 &&
+                Number(oPeriod.Weeks) <= Number(sClosingWeeks) ?
+                oPeriod.Weeks :
+                sClosingWeeks;
+
+            if (sPeriodType === "M") {
+                return "\uB2F9\uAE30 2026\uB144 " + oPeriod.Monat + "\uC6D4 (" +
+                    Number(sDisplayWeeks || 0) + "\uC8FC\uCC28 " +
+                    this._getWeekEndDateText(2026, sDisplayWeeks) + "\uAE4C\uC9C0)";
+            }
+
+            return "\uB2F9\uAE30 2026\uB144 " + sDisplayWeeks + "\uC8FC\uCC28 (" +
+                this._getWeekRangeText(2026, sDisplayWeeks) + ")";
+        },
+        _getWeekEndDateText(iYear, sWeek) {
+            return this._formatDate(this._getWeekRange(iYear, sWeek).end);
+        },
+        _addCompareChartRows(aChartData, sPeriodGroup, sPeriodLabel, sSalesTypeText, oRow, sPrefix) {
+            [
+                { metric: "\uB9E4\uCD9C", property: sPrefix + "salesamt" },
+                { metric: "\uC6D0\uAC00", property: sPrefix + "costamt" },
+                { metric: "\uC774\uC775", property: sPrefix + "profitamt" }
+            ].forEach(function (oMetric) {
+                aChartData.push({
+                    Period: sPeriodGroup,
+                    PeriodDetail: sPeriodLabel,
+                    SalesTypeText: sSalesTypeText,
+                    Metric: oMetric.metric,
+                    Amount: this._toSalesCompareNumber(oRow, oMetric.property)
+                });
+            }.bind(this));
+        },
+        _syncKpiIndicators(oData, iKpiRequestSeq) {
+            var aIndicators = [
+                {
+                    id: "idSalesNumeric",
+                    statusId: "idSalesKpiStatus",
+                    comparisonAmount: oData.Compsalesamt,
+                    rate: oData.Prevsalesrate
+                },
+                {
+                    id: "idCostNumeric",
+                    statusId: "idCostKpiStatus",
+                    comparisonAmount: oData.Compcostamt,
+                    rate: oData.Prevcostrate
+                },
+                {
+                    id: "idProfitNumeric",
+                    statusId: "idProfitKpiStatus",
+                    comparisonAmount: oData.Compprofitamt,
+                    rate: oData.Prevprofitrate
+                },
+                {
+                    id: "idProfitRateNumeric",
+                    statusId: "idProfitRateKpiStatus",
+                    comparisonAmount: oData.Compsalesamt,
+                    rate: oData.Compprofitrate
+                }
+            ];
+            var fnApplyIndicators = function () {
+                if (iKpiRequestSeq && iKpiRequestSeq !== this._iKpiRequestSeq) {
+                    return;
+                }
+
+                aIndicators.forEach(function (oIndicator) {
+                    var oNumericContent = this.byId(oIndicator.id);
+
+                    if (oNumericContent) {
+                        var sIndicator = this._isKpiComparisonMissing(oIndicator.statusId, oIndicator.comparisonAmount) ?
+                            "None" :
+                            this.formatKpiIndicator(oIndicator.comparisonAmount, oIndicator.rate);
+
+                        this._applyKpiIndicator(oNumericContent, sIndicator);
+                    }
+                }.bind(this));
+            }.bind(this);
+
+            fnApplyIndicators();
+            setTimeout(fnApplyIndicators, 0);
+            setTimeout(fnApplyIndicators, 100);
+        },
         onTabSelect(oEvent) {
             this._sAnalysisType = oEvent.getParameter("key"); // A / G / R
+            if (this._sAnalysisType !== "A") {
+                this._sCompareRequestKey = "";
+            }
             // this._bindKpiTile(sAnalysisType);
             // 같은 비교기간 기준으로 KPI 다시 조회
             // this._bindKpiTile();
@@ -122,6 +297,7 @@ sap.ui.define([
             //this.byId("idDetailChartBox").setVisible(this._sAnalysisType !== "A");
 
             this.byId("idFCL").setLayout("OneColumn");
+            this._setDetailTableCompact(false);
 
             var oFCL = this.byId("idFCL");
 
@@ -155,8 +331,8 @@ sap.ui.define([
 
         },
         _bindKpiTile() {
-
             var sPeriodType = this.byId("idPeriodType").getSelectedKey();
+            this._resetKpiIndicators();
 
              // 비교기간 선택값
             var sCompMonat = this.byId("idMonat").getSelectedKey();
@@ -166,18 +342,19 @@ sap.ui.define([
             var sCurrWeeks;
             var sCompMonatForKey;
             var sCompWeeksForKey;
+            var oCurrentPeriod = this._getCurrentAnalysisPeriod(sPeriodType);
 
             if (sPeriodType === "M") {
                 // 월 기준 비교
-                sCurrMonat = this._sCurrMonat;
-                sCurrWeeks = "00";
+                sCurrMonat = oCurrentPeriod.Monat;
+                sCurrWeeks = oCurrentPeriod.Weeks;
 
                 sCompMonatForKey = sCompMonat;
                 sCompWeeksForKey = "00";
             } else {
                 // 주 기준 비교
-                sCurrMonat = "00";
-                sCurrWeeks = this._sCurrWeeks;   // 당기 고정
+                sCurrMonat = oCurrentPeriod.Monat;
+                sCurrWeeks = oCurrentPeriod.Weeks;   // 당기 고정
 
                 sCompMonatForKey = "00";
                 sCompWeeksForKey = sCompWeeks;   // 비교기간만 Select
@@ -193,23 +370,32 @@ sap.ui.define([
                 "Periodtype='" + sPeriodType + "'," +
                 "Analysistype='" + this._sAnalysisType + "'" +
             ")";
+            var iKpiRequestSeq = (this._iKpiRequestSeq || 0) + 1;
+            this._iKpiRequestSeq = iKpiRequestSeq;
+            if (this._sAnalysisType === "A") {
+                this._sCompareRequestKey = "";
+            }
+
             this.byId("kpiBox").bindElement({
                 path: sPath,
                 events: {
                     dataReceived: function () {
+                        if (iKpiRequestSeq !== this._iKpiRequestSeq) {
+                            return;
+                        }
+
                         var oContext = this.byId("kpiBox").getBindingContext();
 
                         if (!oContext) {
                             return;
                         }
 
-                        if (this._sAnalysisType === "A") {
-                            this._bindCompareChart();
-                        } else {
+                        if (this._sAnalysisType !== "A") {
                             this._bindDetailAnalysis();
                         }
 
                         var oData = oContext.getObject();
+                        this._syncKpiIndicators(oData || {}, iKpiRequestSeq);
                         console.log("===== ODATA RESULT =====");
                         console.log(oData);
 
@@ -219,6 +405,10 @@ sap.ui.define([
                     }.bind(this)
                 }
             });
+
+            if (this._sAnalysisType === "A") {
+                this._bindCompareChart();
+            }
         },
         onMonatChange(){
             // 선택된 월이 바뀔 때, 주차 데이터를 다시 세팅한다.
@@ -303,6 +493,140 @@ sap.ui.define([
                     this.byId("idCompPeriodText").setValue("비교기간: 2026년 " + sWeeks + "주차");
                 }
             },
+            _setWeekByMonth(){
+            var oWeek = this.byId("idWeeks");
+            var sPeriodType = this.byId("idPeriodType").getSelectedKey();
+            var iYear = Number(this._sCurrGjahr || 2026);
+            var sSelectedWeek = oWeek.getSelectedKey();
+            var sMonth = this.byId("idMonat").getSelectedKey();
+
+            oWeek.removeAllItems();
+
+            if (sPeriodType === "W") {
+                var iMaxWeek = this._getSelectableMaxWeek(iYear);
+
+                for (var iWeek = 1; iWeek <= iMaxWeek; iWeek++) {
+                    var sYearWeek = String(iWeek).padStart(2, "0");
+
+                    oWeek.addItem(
+                        new Item({
+                            key: sYearWeek,
+                            text: sYearWeek + "주차 (" + this._getWeekRangeText(iYear, sYearWeek) + ")"
+                        })
+                    );
+                }
+
+                oWeek.setSelectedKey(
+                    this._bSelectPreviousWeekByDefault
+                        ? String(iMaxWeek).padStart(2, "0")
+                        : this._getSelectableWeekKey(sSelectedWeek, iMaxWeek)
+                );
+                this._bSelectPreviousWeekByDefault = false;
+                return;
+            }
+
+            var iMonth = Number(sMonth);
+            var iLastDay = new Date(iYear, iMonth, 0).getDate();
+            var aWeeks = [];
+
+            for (var iDay = 1; iDay <= iLastDay; iDay++) {
+                var oDate = new Date(iYear, iMonth - 1, iDay);
+                var sWeek = this._getWeekNo(oDate);
+
+                if (!aWeeks.includes(sWeek)) {
+                    aWeeks.push(sWeek);
+                }
+            }
+
+            aWeeks.forEach(function (sWeek) {
+                oWeek.addItem(
+                    new Item({
+                        key: sWeek,
+                        text: sWeek + "주차"
+                    })
+                );
+            });
+
+            if (aWeeks.length > 0) {
+                oWeek.setSelectedKey(aWeeks[0]);
+            }
+        },
+        _getIsoWeeksInYear(iYear) {
+            return Number(this._getWeekNo(new Date(iYear, 11, 28)));
+        },
+        _getSelectableMaxWeek(iYear) {
+            var iMaxWeek = this._getIsoWeeksInYear(iYear);
+
+            if (String(iYear) === this._sCurrGjahr) {
+                iMaxWeek = Math.min(iMaxWeek, Number(this._getCurrentClosingWeekKey()) - 1);
+            }
+
+            return Math.max(iMaxWeek, 1);
+        },
+        _getSelectableWeekKey(sSelectedWeek, iMaxWeek) {
+            var iSelectedWeek = Number(sSelectedWeek || 0);
+
+            if (iSelectedWeek > 0 && iSelectedWeek <= iMaxWeek) {
+                return String(iSelectedWeek).padStart(2, "0");
+            }
+
+            return String(iMaxWeek).padStart(2, "0");
+        },
+        _getWeekRangeText(iYear, sWeek) {
+            var oRange = this._getWeekRange(iYear, sWeek);
+
+            return this._formatDate(oRange.start) + " ~ " + this._formatDate(oRange.end);
+        },
+        _getWeekRange(iYear, sWeek) {
+            var iWeek = Number(sWeek || 1);
+            var oJan4 = new Date(Date.UTC(iYear, 0, 4));
+            var iJan4Day = oJan4.getUTCDay() || 7;
+            var oStart = new Date(oJan4);
+
+            oStart.setUTCDate(oJan4.getUTCDate() - iJan4Day + 1 + ((iWeek - 1) * 7));
+
+            var oEnd = new Date(oStart);
+            oEnd.setUTCDate(oStart.getUTCDate() + 6);
+
+            return {
+                start: oStart,
+                end: oEnd
+            };
+        },
+        _formatDate(oDate) {
+            return [
+                oDate.getUTCFullYear(),
+                String(oDate.getUTCMonth() + 1).padStart(2, "0"),
+                String(oDate.getUTCDate()).padStart(2, "0")
+            ].join(".");
+        },
+        onPeriodTypeChange(){
+            var sKey = this.byId("idPeriodType").getSelectedKey();
+
+            this.byId("idMonat").setVisible(sKey === "M");
+            this.byId("idWeeks").setVisible(sKey === "W");
+
+            this._bSelectPreviousWeekByDefault = sKey === "W";
+            this._setWeekByMonth();
+            this._setCompPeriodText();
+
+            if (this.getView().getModel("chart")) {
+                this._bindKpiTile();
+            }
+        },
+        _setCompPeriodText(){
+            var sPeriodType = this.byId("idPeriodType").getSelectedKey();
+            var sMonat = this.byId("idMonat").getSelectedKey();
+            var sWeeks = this.byId("idWeeks").getSelectedKey();
+
+            if (sPeriodType === "M") {
+                this.byId("idCompPeriodText").setValue("비교기간: 2026년 " + sMonat + "월");
+            } else {
+                this.byId("idCompPeriodText").setValue(
+                    "비교기간: 2026년 " + sWeeks + "주차 (" + this._getWeekRangeText(2026, sWeeks) + ")"
+                );
+            }
+        },
             _bindCompareChart() {
             var sPeriodType = this.byId("idPeriodType").getSelectedKey();
 
@@ -311,10 +635,11 @@ sap.ui.define([
 
             var sCurrMonat, sCurrWeeks, sCompMonatForKey, sCompWeeksForKey;
             var sCurrLabel, sCompLabel;
+            var oCurrentPeriod = this._getCurrentAnalysisPeriod(sPeriodType);
 
             if (sPeriodType === "M") {
-                sCurrMonat = this._sCurrMonat;
-                sCurrWeeks = "00";
+                sCurrMonat = oCurrentPeriod.Monat;
+                sCurrWeeks = oCurrentPeriod.Weeks;
                 sCompMonatForKey = sCompMonat;
                 sCompWeeksForKey = "00";
 
@@ -323,14 +648,19 @@ sap.ui.define([
                 sCompLabel = "비교 2026년 " + sCompMonat + "월";
 
             } else {
-                sCurrMonat = "00";
-                sCurrWeeks = this._sCurrWeeks;   // 당기 고정
+                sCurrMonat = oCurrentPeriod.Monat;
+                sCurrWeeks = oCurrentPeriod.Weeks;   // 당기 고정
 
                 sCompMonatForKey = "00";
                 sCompWeeksForKey = sCompWeeks;
 
                 sCurrLabel = "당기 2026년 " + sCurrWeeks + "주차";
                 sCompLabel = "비교 2026년 " + sCompWeeks + "주차";
+            }
+
+            if (sPeriodType === "W") {
+                sCurrLabel = "당기 2026년 " + sCurrWeeks + "주차 (" + this._getWeekRangeText(2026, sCurrWeeks) + ")";
+                sCompLabel = "비교 2026년 " + sCompWeeks + "주차 (" + this._getWeekRangeText(2026, sCompWeeks) + ")";
             }
 
             var aFilters = [
@@ -342,22 +672,34 @@ sap.ui.define([
                 new sap.ui.model.Filter("Compweeks", sap.ui.model.FilterOperator.EQ, sCompWeeksForKey),
                 new sap.ui.model.Filter("Periodtype", sap.ui.model.FilterOperator.EQ, sPeriodType)
             ];
+            var sCompareRequestKey = [
+                this._sAnalysisType,
+                sPeriodType,
+                sCurrMonat,
+                sCurrWeeks,
+                sCompMonatForKey,
+                sCompWeeksForKey
+            ].join("|");
+            this._sCompareRequestKey = sCompareRequestKey;
 
             var oContext = this.byId("kpiBox").getBindingContext();
+            var oODataModel = this.getView().getModel() || (oContext && oContext.getModel());
+            var oChartModel = this.getView().getModel("chart");
 
-            if (!oContext) {
+            if (!oODataModel || !oChartModel) {
                 return;
             }
-
-            var oODataModel = oContext.getModel();
-            var oChartModel = this.getView().getModel("chart");
             //var oODataModel = this.byId("kpiBox").getModel();
             //var oChartModel = this.getView().getModel("chart");
+            oChartModel.setProperty("/salesCompare", []);
 
             oODataModel.read("/ProfitCompareSet", {
                 filters: aFilters,
 
                 success: function (oData) {
+                    if (sCompareRequestKey !== this._sCompareRequestKey) {
+                        return;
+                    }
 
                     // 일반판매 / 렌탈판매 행 찾기
                     var oGeneral = oData.results.find(function (oRow) {
@@ -367,70 +709,49 @@ sap.ui.define([
                     var oRental = oData.results.find(function (oRow) {
                         return oRow.Salestype === "R";
                     });
+                    oGeneral = oGeneral || {};
+                    oRental = oRental || {};
+                    sCurrLabel = this._getCurrentCompareLabel(sPeriodType, oGeneral, oRental, sCurrMonat, sCurrWeeks);
 
                     var aChartData = [];
+                    var sGeneralText = "\uC77C\uBC18\uD310\uB9E4";
+                    var sRentalText = "\uB80C\uD0C8\uD310\uB9E4";
+                    var sCurrGroup = sCurrLabel;
+                    var sCompGroup = sCompLabel;
 
                     if (this._sAnalysisType === "A") {
-                        aChartData.push(
-                            {
-                                Period: sCurrLabel,
-                                SalesTypeText: "일반판매",
-                                Sales: Number(oGeneral.Currsalesamt)
-                            },
-                            {
-                                Period: sCurrLabel,
-                                SalesTypeText: "렌탈판매",
-                                Sales: Number(oRental.Currsalesamt)
-                            },
-                            {
-                                Period: sCompLabel,
-                                SalesTypeText: "일반판매",
-                                Sales: Number(oGeneral.Compsalesamt)
-                            },
-                            {
-                                Period: sCompLabel,
-                                SalesTypeText: "렌탈판매",
-                                Sales: Number(oRental.Compsalesamt)
-                            }
-                        );
+                        this._addCompareChartRows(aChartData, sCurrGroup, sCurrLabel, sGeneralText, oGeneral, "Curr");
+                        this._addCompareChartRows(aChartData, sCurrGroup, sCurrLabel, sRentalText, oRental, "Curr");
+                        this._addCompareChartRows(aChartData, sCompGroup, sCompLabel, sGeneralText, oGeneral, "Comp");
+                        this._addCompareChartRows(aChartData, sCompGroup, sCompLabel, sRentalText, oRental, "Comp");
                     } else if (this._sAnalysisType === "G") {
-                        aChartData.push(
-                            {
-                                Period: sCurrLabel,
-                                SalesTypeText: "일반판매",
-                                Sales: Number(oGeneral.Currsalesamt)
-                            },
-                            {
-                                Period: sCompLabel,
-                                SalesTypeText: "일반판매",
-                                Sales: Number(oGeneral.Compsalesamt)
-                            }
-                        );
+                        this._addCompareChartRows(aChartData, sCurrGroup, sCurrLabel, sGeneralText, oGeneral, "Curr");
+                        this._addCompareChartRows(aChartData, sCompGroup, sCompLabel, sGeneralText, oGeneral, "Comp");
                     } else if (this._sAnalysisType === "R") {
-                        aChartData.push(
-                            {
-                                Period: sCurrLabel,
-                                SalesTypeText: "렌탈판매",
-                                Sales: Number(oRental.Currsalesamt)
-                            },
-                            {
-                                Period: sCompLabel,
-                                SalesTypeText: "렌탈판매",
-                                Sales: Number(oRental.Compsalesamt)
-                            }
-                        );
+                        this._addCompareChartRows(aChartData, sCurrGroup, sCurrLabel, sRentalText, oRental, "Curr");
+                        this._addCompareChartRows(aChartData, sCompGroup, sCompLabel, sRentalText, oRental, "Comp");
                     }
 
                     oChartModel.setProperty("/salesCompare", aChartData);
 
                     // 전체/일반/렌탈 탭 모두 같은 Y축 간격을 쓰기 위해
                     // 표시 데이터가 아니라 전체 판매유형 데이터 기준으로 최대값 계산
-                    var iMaxValue = Math.max(
+                    var aAxisValues = [
                         Number(oGeneral.Currsalesamt || 0),
                         Number(oGeneral.Compsalesamt || 0),
+                        Number(oGeneral.Currcostamt || 0),
+                        Number(oGeneral.Compcostamt || 0),
+                        Number(oGeneral.Currprofitamt || 0),
+                        Number(oGeneral.Compprofitamt || 0),
                         Number(oRental.Currsalesamt || 0),
-                        Number(oRental.Compsalesamt || 0)
-                    );
+                        Number(oRental.Compsalesamt || 0),
+                        Number(oRental.Currcostamt || 0),
+                        Number(oRental.Compcostamt || 0),
+                        Number(oRental.Currprofitamt || 0),
+                        Number(oRental.Compprofitamt || 0)
+                    ];
+                    var iMaxValue = Math.max.apply(Math, aAxisValues);
+                    var iMinValue = Math.min.apply(Math, aAxisValues);
 
                     // 보기 좋은 단위로 올림
                     var iAxisMax = Math.ceil(iMaxValue / 1000000) * 1000000;
@@ -443,15 +764,18 @@ sap.ui.define([
                     // 여유 한 칸 추가
                     iAxisMax = iAxisMax + 1000000;
 
+                    var iAxisMin = iMinValue < 0 ? Math.floor(iMinValue / 1000000) * 1000000 - 1000000 : 0;
+
                     this.byId("idSalesCompareChart").setVizProperties({
                         valueAxis: {
                             scale: {
                                 fixedRange: true,
-                                minValue: 0,
+                                minValue: iAxisMin,
                                 maxValue: iAxisMax
                             }
                         }
                     });
+                    this._setChartSingleSelection();
                 }.bind(this)
             });
         },
@@ -467,6 +791,7 @@ sap.ui.define([
             if (oFCL) {
                 oFCL.setLayout("OneColumn");
             }
+            this._setDetailTableCompact(false);
 
             var oTable = this.byId("idDetailTable");
             if (oTable) {
@@ -482,6 +807,12 @@ sap.ui.define([
                 Profitrate: 0,
                 ContributionRate: 0,
                 Waers: "KRW",
+                RevenueCompareText: "",
+                RevenueCompareState: "None",
+                CostCompareText: "",
+                CostCompareState: "None",
+                ProfitCompareText: "",
+                ProfitCompareState: "None",
                 chartTitle: "",
                 chartData: [],
                 trendTitle: "",
@@ -502,13 +833,14 @@ sap.ui.define([
             var sDetailType = this.byId("idAnalysisSegment").getSelectedKey(); // C / M
 
             var sMonat, sWeeks;
+            var oCurrentPeriod = this._getCurrentAnalysisPeriod(sPeriodType);
 
             if (sPeriodType === "M") {
-                sMonat = this._sCurrMonat;
-                sWeeks = "00";
+                sMonat = oCurrentPeriod.Monat;
+                sWeeks = oCurrentPeriod.Weeks;
             } else {
-                sMonat = "00";
-                sWeeks = this._sCurrWeeks;   // 당기 고정
+                sMonat = oCurrentPeriod.Monat;
+                sWeeks = oCurrentPeriod.Weeks;   // 당기 고정
             }
 
             var aFilters = [
@@ -648,6 +980,13 @@ sap.ui.define([
                     visible: true,
                     text: sSalesText + " " + sDetailText + " 매출 점유율"
                 },
+                legend: {
+                    label: {
+                        style: {
+                            fontSize: "11px"
+                        }
+                    }
+                },
                 plotArea: {
                     dataLabel: {
                         visible: true,
@@ -655,6 +994,7 @@ sap.ui.define([
                     }
                 }
             });
+            this._setChartSingleSelection();
         },
         _setDetailBarChartMeasure(){
             var sDetailType = this.byId("idAnalysisSegment").getSelectedKey();
@@ -692,6 +1032,8 @@ sap.ui.define([
                     values: ["분석대상"]
                 }));
             }
+        },
+        _setCompPeriodText() {
         },
         onPeriodChange() {
             this._setCompPeriodText();
@@ -749,6 +1091,12 @@ sap.ui.define([
                 Profitrate: Number(oRow.Profitrate || 0),
                 ContributionRate: nContributionRate.toFixed(2),
                 Waers: oRow.Waers || "KRW",
+                RevenueCompareText: "",
+                RevenueCompareState: "None",
+                CostCompareText: "",
+                CostCompareState: "None",
+                ProfitCompareText: "",
+                ProfitCompareState: "None",
                 chartTitle: sChartTitle,
                 chartData: aChartData,
                 trendTitle: sChartTitle,
@@ -756,7 +1104,112 @@ sap.ui.define([
             });
 
             this.byId("idFCL").setLayout("TwoColumnsMidExpanded");
+            this._setDetailTableCompact(true);
+            this._bindSelectedComparison(oRow);
             this._bindSelectedTrend(oRow);
+        },
+        _bindSelectedComparison(oRow) {
+            var sPeriodType = this.byId("idPeriodType").getSelectedKey();
+            var sDetailType = this.byId("idAnalysisSegment").getSelectedKey();
+            var oPeriod = this._getComparisonPeriod(sPeriodType);
+
+            var aFilters = [
+                new sap.ui.model.Filter("Gjahr", sap.ui.model.FilterOperator.EQ, this._sCurrGjahr),
+                new sap.ui.model.Filter("Monat", sap.ui.model.FilterOperator.EQ, oPeriod.Monat),
+                new sap.ui.model.Filter("Weeks", sap.ui.model.FilterOperator.EQ, oPeriod.Weeks),
+                new sap.ui.model.Filter("Periodtype", sap.ui.model.FilterOperator.EQ, sPeriodType),
+                new sap.ui.model.Filter("Analysistype", sap.ui.model.FilterOperator.EQ, this._sAnalysisType),
+                new sap.ui.model.Filter("Detailtype", sap.ui.model.FilterOperator.EQ, sDetailType),
+                new sap.ui.model.Filter("Dimension", sap.ui.model.FilterOperator.EQ, oRow.Dimension)
+            ];
+
+            var sComparisonKey = [
+                this._sAnalysisType,
+                sDetailType,
+                sPeriodType,
+                oPeriod.Monat,
+                oPeriod.Weeks,
+                oRow.Dimension
+            ].join("|");
+            this._sSelectedComparisonKey = sComparisonKey;
+
+            this.getView().getModel().read("/ProfitDetailSet", {
+                filters: aFilters,
+                success: function (oData) {
+                    if (sComparisonKey !== this._sSelectedComparisonKey) {
+                        return;
+                    }
+
+                    var oCompRow = (oData.results || []).find(function (oDataRow) {
+                        return oDataRow.Dimension === oRow.Dimension;
+                    }) || {};
+
+                    this._applySelectedComparison(oRow, oCompRow);
+                }.bind(this)
+            });
+        },
+        _getComparisonPeriod(sPeriodType) {
+            if (sPeriodType === "M") {
+                return {
+                    Monat: this.byId("idMonat").getSelectedKey(),
+                    Weeks: "00"
+                };
+            }
+
+            return {
+                Monat: "00",
+                Weeks: this.byId("idWeeks").getSelectedKey()
+            };
+        },
+        _applySelectedComparison(oCurrentRow, oCompRow) {
+            var oSelectedModel = this.getView().getModel("selected");
+            var oRevenue = this._getCompareStatus(Number(oCurrentRow.Revenue || 0), Number(oCompRow.Revenue || 0), false);
+            var oCost = this._getCompareStatus(Number(oCurrentRow.Cost || 0), Number(oCompRow.Cost || 0), true);
+            var oProfit = this._getCompareStatus(Number(oCurrentRow.Profit || 0), Number(oCompRow.Profit || 0), false);
+
+            oSelectedModel.setProperty("/RevenueCompareText", oRevenue.text);
+            oSelectedModel.setProperty("/RevenueCompareState", oRevenue.state);
+            oSelectedModel.setProperty("/CostCompareText", oCost.text);
+            oSelectedModel.setProperty("/CostCompareState", oCost.state);
+            oSelectedModel.setProperty("/ProfitCompareText", oProfit.text);
+            oSelectedModel.setProperty("/ProfitCompareState", oProfit.state);
+        },
+        _getCompareStatus(nCurrent, nComparison, bLowerIsBetter) {
+            if (!nComparison) {
+                return {
+                    text: "비교기간 없음",
+                    state: "None"
+                };
+            }
+
+            var nRate = (nCurrent - nComparison) / Math.abs(nComparison) * 100;
+            var sSign = nRate > 0 ? "+" : "";
+            var bGood = bLowerIsBetter ? nRate <= 0 : nRate >= 0;
+
+            return {
+                text: "대비 " + sSign + nRate.toFixed(1) + "%",
+                state: Math.abs(nRate) < 0.05 ? "None" : bGood ? "Success" : "Error"
+            };
+        },
+        _setDetailTableCompact(bCompact) {
+            var aMetricColumnIds = [
+                "idRevenueColumn",
+                "idCostColumn",
+                "idProfitColumn",
+                "idProfitRateColumn"
+            ];
+            var oDimensionColumn = this.byId("idDimensionColumn");
+
+            if (oDimensionColumn) {
+                oDimensionColumn.setWidth(bCompact ? "100%" : "8rem");
+            }
+
+            aMetricColumnIds.forEach(function (sColumnId) {
+                var oColumn = this.byId(sColumnId);
+                if (oColumn) {
+                    oColumn.setVisible(!bCompact);
+                }
+            }.bind(this));
         },
         _syncSelectedDetailAfterRefresh(aResult) {
             var oFCL = this.byId("idFCL");
@@ -768,6 +1221,7 @@ sap.ui.define([
                 if (oFCL) {
                     oFCL.setLayout("OneColumn");
                 }
+                this._setDetailTableCompact(false);
                 return;
             }
 
@@ -857,6 +1311,14 @@ sap.ui.define([
 
             return Number(oRow.Weeks || 0) + "주";
         },
+        _getTrendPeriodLabel(oRow, sPeriodType) {
+            if (sPeriodType === "M") {
+                return Number(oRow.Monat || 0) + "월";
+            }
+
+            var sWeek = String(oRow.Weeks || "0").padStart(2, "0");
+            return Number(oRow.Weeks || 0) + "주차 (" + this._getWeekRangeText(2026, sWeek) + ")";
+        },
         _getSelectedTrendChartOptions() {
             var aPrimaryMeasures = [];
             var bShowProfitRate = this.byId("idTrendProfitRateCheck").getSelected();
@@ -892,6 +1354,7 @@ sap.ui.define([
                 return;
             }
 
+            oChart.setVizType(oOptions.showProfitRate ? "dual_combination" : "combination");
             oChart.removeAllFeeds();
 
             if (oOptions.primaryMeasures.length) {
@@ -918,9 +1381,10 @@ sap.ui.define([
         },
         _setSelectedTrendVizProperties(sDimension, sDetailType, sPeriodType) {
             var sSecondMeasure = sDetailType === "C" ? "이익" : "원가";
-            var sPeriodText = sPeriodType === "M" ? "1월 ~ " + Number(this._sCurrMonat || 0) + "월" : "최근 6주";
-            var sTitle = sDimension + " " + sPeriodText + " 매출/" + sSecondMeasure + "/이익률 추이";
+            var sPeriodText = sPeriodType === "M" ? "1월 ~ " + Number(this._sCurrMonat || 0) + "월" : "주차별 수익성 변화 추이";
+            // var sTitle = sDimension + " " + sPeriodText + " 매출/" + sSecondMeasure + "/이익률 추이";
 
+            var sTitle = sDimension + " " + "주차별 수익성 변화 추이";
             this.getView().getModel("selected").setProperty("/trendTitle", sTitle);
             var oOptions = this._getSelectedTrendChartOptions();
 
@@ -932,7 +1396,7 @@ sap.ui.define([
                 valueAxis: {
                     title: {
                         visible: true,
-                        text: "금액"
+                        text: "금액(원)"
                     }
                 },
                 valueAxis2: {
@@ -953,6 +1417,69 @@ sap.ui.define([
                     }
                 }
             });
+            this._setChartSingleSelection();
+        },
+        _setSelectedTrendVizProperties(sDimension, sDetailType, sPeriodType) {
+            var sSecondMeasure = sDetailType === "C" ? "이익" : "원가";
+            var sPeriodText = sPeriodType === "M" ? "1월 ~ " + Number(this._sCurrMonat || 0) + "월" : "최근 6주";
+            // var sTitle = sDimension + " " + sPeriodText + " 매출/" + sSecondMeasure + "/이익률 추이";
+            var sTitle = sDimension + " " + "주차별 수익성 변화 추이";
+            var oOptions = this._getSelectedTrendChartOptions();
+            var oVizProperties = {
+                title: {
+                    visible: true,
+                    text: sTitle
+                },
+                valueAxis: {
+                    title: {
+                        visible: true,
+                        text: "금액(원)"
+                    }
+                },
+                plotArea: {
+                    dataLabel: {
+                        visible: oOptions.showLabels
+                    },
+                    dataShape: {
+                        primaryAxis: oOptions.primaryMeasures.map(function () {
+                            return "bar";
+                        })
+                    }
+                }
+            };
+
+            if (oOptions.showProfitRate) {
+                oVizProperties.valueAxis2 = {
+                    title: {
+                        visible: true,
+                        text: "이익률(%)"
+                    }
+                };
+                oVizProperties.plotArea.dataShape.secondaryAxis = ["line"];
+            }
+
+            this.getView().getModel("selected").setProperty("/trendTitle", sTitle);
+            this.byId("idSelectedBarChart").setVizProperties(oVizProperties);
+            this._setChartSingleSelection();
+        },
+        _setChartSingleSelection() {
+            [
+                "idSalesCompareChart",
+                "idDetailDonutChart",
+                "idSelectedBarChart"
+            ].forEach(function (sChartId) {
+                var oChart = this.byId(sChartId);
+
+                if (oChart) {
+                    oChart.setVizProperties({
+                        interaction: {
+                            selectability: {
+                                mode: "SINGLE"
+                            }
+                        }
+                    });
+                }
+            }.bind(this));
         },
         onSelectedTrendOptionChange() {
             var oSelectedModel = this.getView().getModel("selected");
@@ -967,6 +1494,7 @@ sap.ui.define([
         },
         onCloseFlexibleDetail() {
             this.byId("idFCL").setLayout("OneColumn");
+            this._setDetailTableCompact(false);
 
             var oTable = this.byId("idDetailTable");
             if (oTable) {
