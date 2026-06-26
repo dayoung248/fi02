@@ -55,6 +55,7 @@
                             id="idWeeks"
                             selectedKey="00"
                             width="18rem"
+                            visible="false"
                             change=".onPeriodChange"
                             class="sapUiTinyMarginEnd sapUiTinyMarginTop" >
                         </Select>

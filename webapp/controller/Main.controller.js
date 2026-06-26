@@ -26,6 +26,11 @@ sap.ui.define([
             //this._sCurrMonat = "06";
             //this._sCurrWeeks = "23";
 
+            this._sCloseGjahr = "";
+            this._sCloseMonat = "";
+            this._sCloseWeeks = "";
+            this._bClosingLoaded = false;
+
             var oMonat = this.byId("idMonat");
 
             for (var i = 1; i <= 12; i++) {
@@ -46,13 +51,13 @@ sap.ui.define([
                                     // 선택되어 있는 월에 해당하는 주차만 select 되도록 한다.
 
              // 3. 월 기준이면 주차 숨김
-            this.onPeriodTypeChange();
+            // this.onPeriodTypeChange();
 
             // 4. 선택 월 기준 주차 생성
-            this._setWeekByMonth();
+            // this._setWeekByMonth();
 
             // 5. 비교기간 텍스트 세팅
-            this._setCompPeriodText();
+            // this._setCompPeriodText();
 
             this.getView().setModel(new JSONModel({
                 salesCompare: []
@@ -103,9 +108,12 @@ sap.ui.define([
             //this.byId("idDetailChartBox").setVisible(this._sAnalysisType !== "A");
 
             // 6. 최초 KPI 바인딩
-            this._bindKpiTile();
             this._setChartSingleSelection();
-            this._bindKpiTile();
+            // this._bindDetailAnalysis();
+            this._loadClosingPeriod();
+            // this._bindKpiTile();
+            // this._setChartSingleSelection();
+            // this._bindKpiTile();
             // this._bindDetailAnalysis();
 
             // this._bindCompareChart();
@@ -175,7 +183,8 @@ sap.ui.define([
             };
         },
         _getCurrentClosingWeekKey() {
-            return String(Math.max(Number(this._sCurrWeeks || 1) - 1, 1)).padStart(2, "0");
+            return String(this._sCloseWeeks || this._sCurrWeeks || "01").padStart(2, "0");
+            // return String(Math.max(Number(this._sCurrWeeks || 1) - 1, 1)).padStart(2, "0");
         },
         _getCompareResponsePeriod(oGeneral, oRental, sFallbackMonat, sFallbackWeeks) {
             var oPeriodRow = (oGeneral && (oGeneral.Monat || oGeneral.Weeks)) ? oGeneral : oRental || {};
@@ -331,6 +340,22 @@ sap.ui.define([
 
         },
         _bindKpiTile() {
+            if (!this._bClosingLoaded) {
+                return;
+            }
+
+            if (!this._sCurrGjahr || !this._sCurrWeeks) {
+                return;
+            }
+
+            var sPeriodType = this.byId("idPeriodType").getSelectedKey();
+
+            if (!sPeriodType) {
+                return;
+            }
+
+            this._resetKpiIndicators();
+            
             var sPeriodType = this.byId("idPeriodType").getSelectedKey();
             this._resetKpiIndicators();
 
@@ -411,45 +436,53 @@ sap.ui.define([
             }
         },
         onMonatChange(){
-            // 선택된 월이 바뀔 때, 주차 데이터를 다시 세팅한다.
-            this._setWeekByMonth();
-            this._setCompPeriodText();
-            this._bindKpiTile();
+            this._refreshPeriodControls();
         },
-        _setWeekByMonth(){
+        _setWeekByMonth() {
             var oWeek = this.byId("idWeeks");
-            // var sYear = this.byId("idGjahr").getSelectedKey();
-            var sMonth = this.byId("idMonat").getSelectedKey();
+            var sPeriodType = this.byId("idPeriodType").getSelectedKey();
+
+            var iYear = Number(this._sCloseGjahr || this._sCurrGjahr || 2026);
+            var iCloseWeek = Number(this._sCloseWeeks || 0);
+            var iMaxCompareWeek = Math.max(iCloseWeek - 1, 1);
+
+            var sSelectedWeek = oWeek.getSelectedKey();
 
             oWeek.removeAllItems();
 
-            var iYear = 2026;
-            var iMonth = Number(sMonth);
-
-            var iLastDay = new Date(iYear, iMonth, 0).getDate();
-            var aWeeks = [];
-
-            // 선택한 월에 포함된 주차만 선택지로
-            for (var iDay = 1; iDay <= iLastDay; iDay++) {
-                var oDate = new Date(iYear, iMonth - 1, iDay);
-                var sWeek = this._getWeekNo(oDate);
-
-                if (!aWeeks.includes(sWeek)) {
-                    aWeeks.push(sWeek);
-                }
+            // 월 기준이면 주차 Select는 쓰지 않음
+            if (sPeriodType === "M") {
+                oWeek.setSelectedKey("");
+                return;
             }
 
-            aWeeks.forEach(function (sWeek) {
+            if (!iCloseWeek) {
                 oWeek.addItem(
                     new Item({
-                        key: sWeek,
-                        text: sWeek + "주"
+                        key: "",
+                        text: "결산주차를 불러오지 못했습니다"
                     })
                 );
-            });
+                oWeek.setSelectedKey("");
+                return;
+            }
 
-            if (aWeeks.length > 0) {
-                oWeek.setSelectedKey(aWeeks[0]);
+            // 주 기준 비교기간: 1주차 ~ 최종결산 이전 주차까지만
+            for (var iWeek = 1; iWeek <= iMaxCompareWeek; iWeek++) {
+                var sYearWeek = String(iWeek).padStart(2, "0");
+
+                oWeek.addItem(
+                    new Item({
+                        key: sYearWeek,
+                        text: sYearWeek + "주차 (" + this._getWeekRangeText(iYear, sYearWeek) + ")"
+                    })
+                );
+            }
+
+            if (Number(sSelectedWeek || 0) > 0 && Number(sSelectedWeek) <= iMaxCompareWeek) {
+                oWeek.setSelectedKey(String(sSelectedWeek).padStart(2, "0"));
+            } else {
+                oWeek.setSelectedKey(String(iMaxCompareWeek).padStart(2, "0"));
             }
         },
         _getWeekNo(oDate){
@@ -464,7 +497,7 @@ sap.ui.define([
             return String(weekNo).padStart(2, "0");
         },
         onPeriodTypeChange(){
-            var sKey = this.byId("idPeriodType").getSelectedKey();
+            // var sKey = this.byId("idPeriodType").getSelectedKey();
 
             // 월 기준인 경우에는 주차 선택 Select 가 보이지 않도록
             // if(sKey === "M"){
@@ -474,91 +507,97 @@ sap.ui.define([
             //    this.byId("idWeeks").setVisible(true);
             //}
 
-            this.byId("idWeeks").setVisible(sKey === "W");
+            // this.byId("idMonat").setVisible(sKey === "M");
+            // this.byId("idWeeks").setVisible(sKey === "W");
 
-            this._setCompPeriodText();
+            // this._setWeekByMonth();
+            // this._setCompPeriodText();
 
-            if (this.getView().getModel("chart")) {
-                this._bindKpiTile();
-            }
+            // if (this.getView().getModel("chart")) {
+            //     this._bindKpiTile();
+            // }
+            this._refreshPeriodControls();
+
         },
-        _setCompPeriodText(){
-                var sPeriodType = this.byId("idPeriodType").getSelectedKey();
-                var sMonat = this.byId("idMonat").getSelectedKey();
-                var sWeeks = this.byId("idWeeks").getSelectedKey();
+        // _setCompPeriodText(){
+        //         var sPeriodType = this.byId("idPeriodType").getSelectedKey();
+        //         var sMonat = this.byId("idMonat").getSelectedKey();
+        //         var sWeeks = this.byId("idWeeks").getSelectedKey();
 
-                if (sPeriodType === "M") {
-                    this.byId("idCompPeriodText").setValue("비교기간: 2026년 " + sMonat + "월");
-                } else {
-                    this.byId("idCompPeriodText").setValue("비교기간: 2026년 " + sWeeks + "주차");
-                }
-            },
-            _setWeekByMonth(){
-            var oWeek = this.byId("idWeeks");
-            var sPeriodType = this.byId("idPeriodType").getSelectedKey();
-            var iYear = Number(this._sCurrGjahr || 2026);
-            var sSelectedWeek = oWeek.getSelectedKey();
-            var sMonth = this.byId("idMonat").getSelectedKey();
+        //         if (sPeriodType === "M") {
+        //             this.byId("idCompPeriodText").setValue("비교기간: 2026년 " + sMonat + "월");
+        //         } else {
+        //             this.byId("idCompPeriodText").setValue("비교기간: 2026년 " + sWeeks + "주차");
+        //         }
+        //     },
+        //     _setWeekByMonth(){
+        //     var oWeek = this.byId("idWeeks");
+        //     var sPeriodType = this.byId("idPeriodType").getSelectedKey();
+        //     var iYear = Number(this._sCurrGjahr || 2026);
+        //     var sSelectedWeek = oWeek.getSelectedKey();
+        //     var sMonth = this.byId("idMonat").getSelectedKey();
 
-            oWeek.removeAllItems();
+        //     oWeek.removeAllItems();
 
-            if (sPeriodType === "W") {
-                var iMaxWeek = this._getSelectableMaxWeek(iYear);
+        //     if (sPeriodType === "W") {
+        //         var iMaxWeek = this._getSelectableMaxWeek(iYear);
 
-                for (var iWeek = 1; iWeek <= iMaxWeek; iWeek++) {
-                    var sYearWeek = String(iWeek).padStart(2, "0");
+        //         for (var iWeek = 1; iWeek <= iMaxWeek; iWeek++) {
+        //             var sYearWeek = String(iWeek).padStart(2, "0");
 
-                    oWeek.addItem(
-                        new Item({
-                            key: sYearWeek,
-                            text: sYearWeek + "주차 (" + this._getWeekRangeText(iYear, sYearWeek) + ")"
-                        })
-                    );
-                }
+        //             oWeek.addItem(
+        //                 new Item({
+        //                     key: sYearWeek,
+        //                     text: sYearWeek + "주차 (" + this._getWeekRangeText(iYear, sYearWeek) + ")"
+        //                 })
+        //             );
+        //         }
 
-                oWeek.setSelectedKey(
-                    this._bSelectPreviousWeekByDefault
-                        ? String(iMaxWeek).padStart(2, "0")
-                        : this._getSelectableWeekKey(sSelectedWeek, iMaxWeek)
-                );
-                this._bSelectPreviousWeekByDefault = false;
-                return;
-            }
+        //         oWeek.setSelectedKey(
+        //             this._bSelectPreviousWeekByDefault
+        //                 ? String(iMaxWeek).padStart(2, "0")
+        //                 : this._getSelectableWeekKey(sSelectedWeek, iMaxWeek)
+        //         );
+        //         this._bSelectPreviousWeekByDefault = false;
+        //         return;
+        //     }
 
-            var iMonth = Number(sMonth);
-            var iLastDay = new Date(iYear, iMonth, 0).getDate();
-            var aWeeks = [];
+        //     var iMonth = Number(sMonth);
+        //     var iLastDay = new Date(iYear, iMonth, 0).getDate();
+        //     var aWeeks = [];
 
-            for (var iDay = 1; iDay <= iLastDay; iDay++) {
-                var oDate = new Date(iYear, iMonth - 1, iDay);
-                var sWeek = this._getWeekNo(oDate);
+        //     for (var iDay = 1; iDay <= iLastDay; iDay++) {
+        //         var oDate = new Date(iYear, iMonth - 1, iDay);
+        //         var sWeek = this._getWeekNo(oDate);
 
-                if (!aWeeks.includes(sWeek)) {
-                    aWeeks.push(sWeek);
-                }
-            }
+        //         if (!aWeeks.includes(sWeek)) {
+        //             aWeeks.push(sWeek);
+        //         }
+        //     }
 
-            aWeeks.forEach(function (sWeek) {
-                oWeek.addItem(
-                    new Item({
-                        key: sWeek,
-                        text: sWeek + "주차"
-                    })
-                );
-            });
+        //     aWeeks.forEach(function (sWeek) {
+        //         oWeek.addItem(
+        //             new Item({
+        //                 key: sWeek,
+        //                 text: sWeek + "주차"
+        //             })
+        //         );
+        //     });
 
-            if (aWeeks.length > 0) {
-                oWeek.setSelectedKey(aWeeks[0]);
-            }
-        },
+        //     if (aWeeks.length > 0) {
+        //         oWeek.setSelectedKey(aWeeks[0]);
+        //     }
+        // },
         _getIsoWeeksInYear(iYear) {
             return Number(this._getWeekNo(new Date(iYear, 11, 28)));
         },
         _getSelectableMaxWeek(iYear) {
             var iMaxWeek = this._getIsoWeeksInYear(iYear);
+            var iCloseWeek = Number(this._sCloseWeeks || this._sCurrWeeks || 1);
+            var iMaxCompareWeek = Math.max(iCloseWeek - 1, 1);
 
-            if (String(iYear) === this._sCurrGjahr) {
-                iMaxWeek = Math.min(iMaxWeek, Number(this._getCurrentClosingWeekKey()) - 1);
+            if (String(iYear) === String(this._sCloseGjahr || this._sCurrGjahr)) {
+                iMaxWeek = Math.min(iMaxWeek, iMaxCompareWeek);
             }
 
             return Math.max(iMaxWeek, 1);
@@ -600,29 +639,34 @@ sap.ui.define([
                 String(oDate.getUTCDate()).padStart(2, "0")
             ].join(".");
         },
-        onPeriodTypeChange(){
-            var sKey = this.byId("idPeriodType").getSelectedKey();
+        // onPeriodTypeChange(){
+        //     var sKey = this.byId("idPeriodType").getSelectedKey();
 
-            this.byId("idMonat").setVisible(sKey === "M");
-            this.byId("idWeeks").setVisible(sKey === "W");
+        //     this.byId("idMonat").setVisible(sKey === "M");
+        //     this.byId("idWeeks").setVisible(sKey === "W");
 
-            this._bSelectPreviousWeekByDefault = sKey === "W";
-            this._setWeekByMonth();
-            this._setCompPeriodText();
+        //     this._bSelectPreviousWeekByDefault = sKey === "W";
+        //     this._setWeekByMonth();
+        //     this._setCompPeriodText();
 
-            if (this.getView().getModel("chart")) {
-                this._bindKpiTile();
-            }
-        },
+        //     if (this.getView().getModel("chart")) {
+        //         this._bindKpiTile();
+        //     }
+        // },
         _setCompPeriodText(){
             var sPeriodType = this.byId("idPeriodType").getSelectedKey();
             var sMonat = this.byId("idMonat").getSelectedKey();
             var sWeeks = this.byId("idWeeks").getSelectedKey();
+            var oCompPeriodText = this.byId("idCompPeriodText");
+
+            if (!oCompPeriodText) {
+                return;
+            }
 
             if (sPeriodType === "M") {
-                this.byId("idCompPeriodText").setValue("비교기간: 2026년 " + sMonat + "월");
+                oCompPeriodText.setValue("비교기간: 2026년 " + sMonat + "월");
             } else {
-                this.byId("idCompPeriodText").setValue(
+                oCompPeriodText.setValue(
                     "비교기간: 2026년 " + sWeeks + "주차 (" + this._getWeekRangeText(2026, sWeeks) + ")"
                 );
             }
@@ -864,6 +908,13 @@ sap.ui.define([
 
             //var oODataModel = this.byId("kpiBox").getBindingContext().getModel();
             //var oDetailModel = this.getView().getModel("detail");
+            if (!oODataModel || !oDetailModel) {
+                return;
+            }
+
+            if (this._sAnalysisType === "A") {
+                return;
+            }
 
             oODataModel.read("/ProfitDetailSet", {
                 filters: aFilters,
@@ -1033,11 +1084,8 @@ sap.ui.define([
                 }));
             }
         },
-        _setCompPeriodText() {
-        },
         onPeriodChange() {
-            this._setCompPeriodText();
-            this._bindKpiTile();
+            this._refreshPeriodControls();
         },
         onDetailRowSelect(oEvent) {
             var oItem = oEvent.getParameter("listItem");
@@ -1500,6 +1548,187 @@ sap.ui.define([
             if (oTable) {
                 oTable.removeSelections(true);
             }
+        },
+        _loadClosingPeriod() {
+            var oModel = this.getView().getModel() || this.getOwnerComponent().getModel();
+
+            if (!oModel) {
+                return;
+            }
+
+            oModel.read("/ClosingPeriodSet", {
+                success: function (oData) {
+                    oData = this._getLatestClosingPeriod(oData) || oData;
+                    // this._sCloseGjahr = oData.Gjahr;
+                    // this._sCloseMonat = oData.Monat;
+                    // this._sCloseWeeks = String(oData.Weeks || "01").padStart(2, "0");
+                    
+                    this._applyClosingPeriod(oData);
+                    return;
+                    
+                    this._sCurrGjahr = this._sCloseGjahr;
+                    this._sCurrMonat = this._sCloseMonat;
+                    this._sCurrWeeks = this._sCloseWeeks;
+
+                    this._bClosingLoaded = true;
+
+                     // 월 기준 비교기간 기본값: 결산월의 이전월
+                    this.byId("idMonat").setSelectedKey(this._getPrevMonthKey(this._sCloseMonat));
+
+                    this._refreshPeriodControls();
+
+                    // this._setWeekByMonth();
+                    // this._setCompPeriodText();
+                    // this._bindKpiTile();
+
+                    // if (this._sAnalysisType !== "A") {
+                    //     this._bindDetailAnalysis();
+                    // }
+                }.bind(this)
+                ,
+                error: function (oError) {
+                    console.error("ClosingPeriodSet read failed", oError);
+                    this._loadClosingPeriodFromKpiProbe(oModel);
+                }.bind(this)
+            });
+        },
+        _loadClosingPeriodFromKpiProbe(oModel) {
+            var sCompWeeks = String(Math.max(Number(this._sCurrWeeks || 1) - 1, 1)).padStart(2, "0");
+            var sProbePath = "/ProfitKpiSet(" +
+                "Gjahr='" + this._sCurrGjahr + "'," +
+                "Monat='00'," +
+                "Weeks='" + this._sCurrWeeks + "'," +
+                "Compgjahr='2026'," +
+                "Compmonat='00'," +
+                "Compweeks='" + sCompWeeks + "'," +
+                "Periodtype='W'," +
+                "Analysistype='A'" +
+            ")";
+
+            oModel.read(sProbePath, {
+                success: function (oData) {
+                    console.log("ClosingPeriod fallback from ProfitKpiSet", oData);
+                    this._applyClosingPeriod(oData);
+                }.bind(this),
+                error: function (oError) {
+                    console.error("ProfitKpiSet closing fallback failed", oError);
+                    this._applyFallbackClosingPeriod();
+                }.bind(this)
+            });
+        },
+        _applyFallbackClosingPeriod() {
+            var iCloseWeek = Math.max(Number(this._sCurrWeeks || 1) - 1, 1);
+
+            this._sCloseGjahr = this._sCurrGjahr;
+            this._sCloseMonat = this._sCurrMonat;
+            this._sCloseWeeks = String(iCloseWeek).padStart(2, "0");
+            this._sCurrWeeks = this._sCloseWeeks;
+            this._bClosingLoaded = true;
+
+            this.byId("idMonat").setSelectedKey(this._getPrevMonthKey(this._sCloseMonat));
+            this._refreshPeriodControls();
+        },
+        _getLatestClosingPeriod(oData) {
+            var aRows = oData && oData.results ? oData.results : [];
+
+            if (!aRows.length) {
+                return oData;
+            }
+
+            return aRows.slice().sort(function (oA, oB) {
+                return this._getClosingPeriodSortValue(oB) - this._getClosingPeriodSortValue(oA);
+            }.bind(this))[0];
+        },
+        _getClosingPeriodValue(oRow, aProperties) {
+            for (var i = 0; i < aProperties.length; i++) {
+                var vValue = oRow && oRow[aProperties[i]];
+
+                if (vValue !== undefined && vValue !== null && vValue !== "") {
+                    return vValue;
+                }
+            }
+
+            return "";
+        },
+        _getClosingPeriodSortValue(oRow) {
+            return Number(this._getClosingPeriodValue(oRow, ["Gjahr", "GJAHR"]) || 0) * 10000 +
+                Number(this._getClosingPeriodValue(oRow, ["Monat", "MONAT"]) || 0) * 100 +
+                Number(this._getClosingPeriodValue(oRow, ["Weeks", "WEEKS", "Week", "WEEK", "CloseWeeks", "CLOSEWEEKS"]) || 0);
+        },
+        _applyClosingPeriod(oData) {
+            console.log("ClosingPeriod row", oData);
+
+            var sCloseWeeks = String(this._getClosingPeriodValue(oData, [
+                "Weeks",
+                "WEEKS",
+                "Week",
+                "WEEK",
+                "Closeweeks",
+                "CloseWeeks",
+                "CLOSEWEEKS"
+            ]) || "");
+
+            if (!sCloseWeeks || sCloseWeeks === "00") {
+                console.error("ClosingPeriod Weeks is empty", oData);
+                this._applyFallbackClosingPeriod();
+                return;
+            }
+
+            this._sCloseGjahr = String(this._getClosingPeriodValue(oData, ["Gjahr", "GJAHR"]) || this._sCurrGjahr || "2026");
+            this._sCloseMonat = String(this._getClosingPeriodValue(oData, ["Monat", "MONAT"]) || this._sCurrMonat || "01").padStart(2, "0");
+            this._sCloseWeeks = sCloseWeeks.padStart(2, "0");
+
+            this._sCurrGjahr = this._sCloseGjahr;
+            this._sCurrMonat = this._sCloseMonat;
+            this._sCurrWeeks = this._sCloseWeeks;
+            this._bClosingLoaded = true;
+
+            this.byId("idMonat").setSelectedKey(this._getPrevMonthKey(this._sCloseMonat));
+            this._refreshPeriodControls();
+        },
+        _getPrevMonthKey(sMonat) {
+            var iMonat = Number(sMonat || "01") - 1;
+
+            if (iMonat <= 0) {
+                iMonat = 12;
+            }
+
+            return String(iMonat).padStart(2, "0");
+        },
+        _refreshPeriodControls() {
+            var sKey = this.byId("idPeriodType").getSelectedKey();
+            var oMonat = this.byId("idMonat");
+            var oWeeks = this.byId("idWeeks");
+
+            var bMonth = sKey === "M";
+            var bWeek = sKey === "W";
+
+            oMonat.setVisible(bMonth);
+            oWeeks.setVisible(bWeek);
+
+            if (bMonth) {
+                oWeeks.removeAllItems();
+                oWeeks.setSelectedKey("");
+            }
+
+            if (!this._bClosingLoaded) {
+                if (bWeek) {
+                    oWeeks.removeAllItems();
+                    oWeeks.setSelectedKey("");
+                }
+                return;
+            }
+
+            if (bWeek) {
+                this._setWeekByMonth();
+            }
+
+            this._setCompPeriodText();
+            this._bindKpiTile();
+
+            if (this._sAnalysisType !== "A") {
+                this._bindDetailAnalysis();
+            }        
         }
     });
 });
