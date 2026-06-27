@@ -20,3 +20,16 @@
 .fi02NoKpiIndicator [id$="-indicator"] {
     display: none !important;
 }
+
+.fi02DetailKpiTile {
+    width: 11.25rem;
+}
+
+.fi02DetailKpiNumber .sapMNCValue {
+    font-size: 1.45rem;
+    letter-spacing: 0;
+}
+
+.fi02DetailKpiNumber .sapMNCScale {
+    display: none;
+}

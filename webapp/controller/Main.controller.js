@@ -916,6 +916,15 @@ sap.ui.define([
                 return;
             }
 
+            console.log("===== DETAIL FILTERS =====", {
+            Gjahr: this._sCurrGjahr,
+            Monat: sMonat,
+            Weeks: sWeeks,
+            Periodtype: sPeriodType,
+            Analysistype: this._sAnalysisType,
+            Detailtype: sDetailType
+            });
+
             oODataModel.read("/ProfitDetailSet", {
                 filters: aFilters,
                 // success: function (oData) {
@@ -1097,6 +1106,9 @@ sap.ui.define([
             this._setSelectedDetail(oRow);
         },
         _setSelectedDetail(oRow) {
+            console.log("===== SELECTED DETAIL ROW =====", oRow);
+            console.log("PeriodType:", this.byId("idPeriodType").getSelectedKey());
+
             var sDetailType = this.byId("idAnalysisSegment").getSelectedKey();
 
             var aDetailData = this.getView().getModel("detail").getProperty("/detailData") || [];
@@ -1668,9 +1680,10 @@ sap.ui.define([
                 "CLOSEWEEKS"
             ]) || "");
 
-            if (!sCloseWeeks || sCloseWeeks === "00") {
+            if (!sCloseWeeks) {
                 console.error("ClosingPeriod Weeks is empty", oData);
-                this._applyFallbackClosingPeriod();
+                this._bClosingLoaded = true;
+                this._refreshPeriodControls();
                 return;
             }
 

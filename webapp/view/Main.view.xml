@@ -82,11 +82,12 @@
                                                             'Waers' ],
                                                             type: 'sap.ui.model.type.Currency',
                                                             formatOptions: { showMeasure: false } }"
-                                            scale="{Waers}"
+                                            scale=""
                                             valueColor="{= ${Prevsalesrate} >= 0 ? 'Good' : 'Error' }"
                                             indicator="None"
-                                            truncateValueTo="12"
-                                            withMargin="false" /> 
+                                            truncateValueTo="16"
+                                            withMargin="false"
+                                            width="100%" /> 
 
                                         <ObjectStatus
                                             id="idSalesKpiStatus"
@@ -121,10 +122,10 @@
                                                             'Waers' ],
                                                             type: 'sap.ui.model.type.Currency',
                                                             formatOptions: { showMeasure: false } }"
-                                            scale="{Waers}"
+                                            scale=""
                                             valueColor="{= ${Prevcostrate} >= 0 ? 'Error' : 'Good' }"
                                             indicator="None"
-                                            truncateValueTo="12"
+                                            truncateValueTo="16"
                                             withMargin="false" 
                                             width="100%"/>
                                         <ObjectStatus
@@ -150,10 +151,10 @@
                                                             'Waers' ],
                                                             type: 'sap.ui.model.type.Currency',
                                                             formatOptions: { showMeasure: false } }"
-                                            scale="{Waers}"
+                                            scale=""
                                             valueColor="{= ${Prevprofitrate} >= 0 ? 'Good' : 'Error' }"
                                             indicator="None"
-                                            truncateValueTo="12"
+                                            truncateValueTo="16"
                                             withMargin="false" 
                                             width="100%"/>
                                         <ObjectStatus
@@ -438,30 +439,36 @@
 
                                 <VBox >
                                     <HBox wrap="Wrap" alignContent="Center" class="sapUiSmallMarginTopBottom" >
-                                        <GenericTile header="매출" class="sapUiTinyMarginBeginEnd" frameType="OneByHalf">
+                                        <GenericTile header="매출(단위: 원)" class="sapUiTinyMarginBeginEnd fi02DetailKpiTile" frameType="OneByHalf">
                                             <TileContent footer="{selected>/RevenueCompareText}">
                                                 <NumericContent
+                                                    class="fi02DetailKpiNumber"
                                                     value="{ parts:['selected>/Revenue','selected>/Waers'], type:'sap.ui.model.type.Currency', formatOptions:{ showMeasure:false } }"
-                                                    scale="{selected>/Waers}"
-                                                    truncateValueTo="12"/>
+                                                    scale=""
+                                                    truncateValueTo="16"
+                                                    width="100%"/>
                                             </TileContent>
                                         </GenericTile>
 
-                                        <GenericTile header="원가" class="sapUiTinyMarginEnd" frameType="OneByHalf">
+                                        <GenericTile header="원가(단위: 원)" class="sapUiTinyMarginEnd fi02DetailKpiTile" frameType="OneByHalf">
                                             <TileContent footer="{selected>/CostCompareText}">
                                                 <NumericContent
+                                                    class="fi02DetailKpiNumber"
                                                     value="{ parts:['selected>/Cost','selected>/Waers'], type:'sap.ui.model.type.Currency', formatOptions:{ showMeasure:false } }"
-                                                    scale="{selected>/Waers}"
-                                                    truncateValueTo="12"/>
+                                                    scale=""
+                                                    truncateValueTo="16"
+                                                    width="100%"/>
                                             </TileContent>
                                         </GenericTile>
 
-                                        <GenericTile header="이익" class="sapUiTinyMarginEnd" frameType="OneByHalf">
+                                        <GenericTile header="이익(단위: 원)" class="sapUiTinyMarginEnd fi02DetailKpiTile" frameType="OneByHalf">
                                             <TileContent footer="{selected>/ProfitCompareText}">
                                                 <NumericContent
+                                                    class="fi02DetailKpiNumber"
                                                     value="{ parts:['selected>/Profit','selected>/Waers'], type:'sap.ui.model.type.Currency', formatOptions:{ showMeasure:false } }"
-                                                    scale="{selected>/Waers}"
-                                                    truncateValueTo="12"
+                                                    scale=""
+                                                    truncateValueTo="16"
+                                                    width="100%"
                                                     valueColor="{= ${selected>/Profit} >= 0 ? 'Good' : 'Error' }"/>
                                             </TileContent>
                                         </GenericTile>
