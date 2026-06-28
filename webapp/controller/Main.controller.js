@@ -22,6 +22,7 @@ sap.ui.define([
             this._sCurrGjahr = String(oToday.getFullYear());
             this._sCurrMonat = String(oToday.getMonth() + 1).padStart(2, "0");
             this._sCurrWeeks = this._getWeekNo(oToday);
+            this._sBaseMonat = this._sCurrMonat;
             //this._sCurrGjahr = "2026";
             //this._sCurrMonat = "06";
             //this._sCurrWeeks = "23";
@@ -1687,8 +1688,14 @@ sap.ui.define([
                 return;
             }
 
+            var sCloseMonat = String(this._getClosingPeriodValue(oData, ["Monat", "MONAT"]) || "").padStart(2, "0");
+
+            if (!sCloseMonat || sCloseMonat === "00") {
+                sCloseMonat = String(this._sBaseMonat || this._sCurrMonat || "01").padStart(2, "0");
+            }
+
             this._sCloseGjahr = String(this._getClosingPeriodValue(oData, ["Gjahr", "GJAHR"]) || this._sCurrGjahr || "2026");
-            this._sCloseMonat = String(this._getClosingPeriodValue(oData, ["Monat", "MONAT"]) || this._sCurrMonat || "01").padStart(2, "0");
+            this._sCloseMonat = sCloseMonat;
             this._sCloseWeeks = sCloseWeeks.padStart(2, "0");
 
             this._sCurrGjahr = this._sCloseGjahr;
